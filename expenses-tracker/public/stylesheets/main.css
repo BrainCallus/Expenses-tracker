@@ -1,0 +1,244 @@
+@charset "utf-8";
+
+html {
+    text-size-adjust: none;
+    -moz-text-size-adjust: none;
+    -webkit-text-size-adjust: none;
+}
+
+body, div, ul, li, h1, h2, h3, h4, h5, h6, pre, form, input, p, th, td {
+    margin: 0;
+    padding: 0;
+}
+
+textarea {
+    margin: 0;
+    padding: 2px;
+}
+
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+img {
+    border: 0;
+}
+
+address, caption, th {
+    font-style: normal;
+    font-weight: normal;
+}
+
+ul {
+    list-style: none;
+}
+
+caption, th {
+    text-align: left;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-size: 100%;
+    font-weight: normal;
+}
+
+q:before, q:after {
+    content: '';
+}
+
+a:link {
+    color: #0000cc;
+}
+
+body {
+    background: #fff;
+    margin: 3px 8px;
+}
+
+body, select, input {
+    font-family: arial, sans-serif;
+}
+
+body {
+    font-size: 83%;
+}
+
+td td, th th, th td, td th {
+    font-size: 100%;
+}
+
+pre {
+    font-size: 110%;
+}
+
+form {
+    padding: 0;
+    margin: 0;
+}
+
+input {
+    padding-left: 1px;
+    padding-right: 1px;
+}
+
+.blue-box {
+    background-color: #e5ecf9;
+    border-color: #c3d9ff !important;
+}
+
+.grey-box {
+    font-size: 11px;
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
+    padding: 2px 2px 2px 5px;
+    border: 1px solid #909090;
+    background-color: #f0f0f0;
+    color: #555;
+    margin-right: 1em;
+    display: inline-block;
+    margin-top: 0.25em;
+    margin-bottom: 0.25em;
+}
+
+.gray-box {
+    background-color: #f0f0f0;
+    border-color: #909090 !important;
+}
+
+.brown-box {
+    background-color: rgb(248, 233, 161);
+    border-color: rgb(204, 204, 204) !important;
+}
+
+.red-box {
+    background-color: #EF9A9A;
+    border-color: rgb(204, 204, 204) !important;
+}
+
+.menu span {
+    float: right;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+    font-size: 90%;
+}
+
+.error {
+    color: red;
+}
+
+.field-error {
+    color: red;
+    font-size: 75%;
+    position: relative;
+    display: block; /*width: 20em;*/
+    width: 100%;
+    top: -7px;
+}
+
+.caption {
+    font-size: 16px;
+}
+
+.caption * {
+    display: inline;
+}
+
+.grid {
+    width: calc(100% - 2em);
+    margin: 0.5em 1em 0 1em;
+}
+
+.grid tr {
+}
+
+.grid tr td {
+    font-size: 100%;
+    border: 1px solid #B2B2B2;
+    padding: 0.25em 0.5em;
+}
+
+.grid tr th {
+    font-size: 100%;
+    border: 1px solid #B2B2B2;
+    text-align: center;
+    padding: 0.25em 0.5em;
+    color: rgb(0, 0, 204);
+    background-color: #e5ecf9;
+    font-weight: bold;
+}
+
+.grid thead td {
+    background-color: #e5ecf9;
+}
+
+.grid:not(.disableTrHoverHighlight) tbody tr:hover:not(:only-child).checked td {
+    background-color: #e5ecf9 !important;
+}
+
+.grid:not(.disableTrHoverHighlight) tbody tr:hover:not(:only-child) td {
+    background-color: #f2f2f2 !important;
+}
+
+.grid caption {
+    font-size: 125%;
+}
+
+.around {
+    margin: 1em;
+    border-left: 4px solid #e5ecf9;
+}
+
+.left-form input {
+    width: 15em;
+}
+
+.left-form select {
+    width: 15em;
+}
+
+.left-form .first-column {
+    width: 12.5em;
+}
+
+.left-form #fileUpload {
+    width: 20em;
+}
+
+.left-form table {
+    margin: 2em 0 2em 2em;
+}
+
+.left-form td {
+    padding: 0.5em;
+}
+
+.menu .active {
+    font-weight: bold;
+}
+
+.terms-of-use {
+    width: 400px;
+}
+
+
+td.suspicious-run, td.violate-tag-run {
+    background-color: #ffe4b5;
+}
+
+button.link {
+    background: none !important;
+    border: none;
+    padding: 0 !important;
+    /*border is optional*/
+    text-decoration: underline;
+    cursor: pointer;
+    color: #0000cc;
+}
+
+#header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5em;
+}

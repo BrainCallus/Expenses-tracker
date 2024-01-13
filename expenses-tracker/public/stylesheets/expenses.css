@@ -1,0 +1,123 @@
+.addExpenseOrScheduledForm {
+    margin: 0 0 2em 1.2em;
+}
+.addExpenseOrScheduledForm table {
+    margin-bottom: 1em;
+}
+
+.addExpenseOrScheduledForm caption {
+    font-size: 125%;
+    text-align: center;
+    padding: 0.25em;
+}
+
+.confirmOrCancelScheduled table{
+    border: 1px solid #909090;
+    background-color: #e5ecf9;
+    margin: 0.5em 1em -0.2em 1em;
+}
+
+.confirmOrCancelScheduled .description {
+    width: 50%;
+}
+
+.confirmOrCancelScheduled .description div {
+    display: flex;
+    justify-content: space-between;
+}
+
+div .diagrams {
+    display: flex;
+    align-items: flex-end;
+}
+
+#chart1 {
+    width: 70%;
+    background-color: aliceblue;
+    padding: 1em 1.9em 1em 1em;
+    margin: 1em;
+    display: inline-flex;
+    align-items: center;
+}
+
+#chart1 .next {
+    font-size: 50px;
+    font-weight: 1000;
+    font-family: monospace;
+    color: #d8dfe570;
+    top: 100px;
+}
+
+#chart2 {
+    width: 30%;
+    position: relative;
+    left: 25%;
+    background-color: aliceblue;
+    padding: 1em;
+    margin-bottom: 1.2em;
+    margin-right: 30em;
+    display: none;
+    align-items: center;
+    justify-content: space-around;
+}
+
+#chart2 .prev {
+    display: inline-flex;
+    align-items: center;
+
+    font-size: 50px;
+    font-weight: 1000;
+    font-family: monospace;
+    color: #d8dfe570;
+    top: 100px;
+}
+
+.predictedValueTable {
+    width: auto;
+    text-align: center;
+    margin: 0.5em 1em 1em 0 !important;
+}
+
+#predict-current-month {
+    max-width: 15em;
+    width: 9.5em;
+}
+#predict-current-month i {
+    color: rgb(128, 128, 128);
+    cursor: pointer;
+}
+
+.form-buttons {
+    margin: 0 0 2em 1.0em;
+}
+
+.expenses-table {
+    width: 80%;
+    text-align: center;
+    margin-top: 2em;
+    font-size: 14px
+}
+
+.expenses-table tr.date {
+    display: block;
+    font-weight: bold;
+    height: 1.5em;
+    border-left: 1px solid rgb(128, 128, 128);
+    margin-left: -0.01em;
+}
+
+.expenses-table tr.date td {
+    background-color: aliceblue;
+    border: none;
+    text-align: left;
+}
+
+.expenses-table tr.expense-info td {
+    border: solid 1px rgb(128, 128, 128);
+}
+
+H2 {
+    color: #aad3f8;
+    font-size: 32px;
+    font-weight: bold;
+}

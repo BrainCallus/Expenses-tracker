@@ -1,0 +1,57 @@
+version: '3'
+
+volumes:
+  mariadb:
+    driver: local
+
+networks:
+  db:
+    driver: bridge
+
+services:
+  db:
+    image: mariadb:10.11
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: user-root
+      MYSQL_USER:  user-root
+      MYSQL_PASSWORD: user-root
+
+    ports:
+      - "3082:3306"
+    volumes:
+      - mariadb:/var/lib/mysql
+    networks:
+      db:
+
+  phpmyadmin:
+    image: phpmyadmin
+    restart: always
+    ports:
+      - "3091:80"
+    environment:
+      - PMA_HOST=db
+      - PMA_PORT=3306
+      - PMA_USER = user-root
+      - PMA_PASSWORD = user-root
+    networks:
+      db:
+  play:
+    image: rakbud-server:latest
+    container_name: expenses-tracker
+    restart: always
+    ports:
+      - "9000:80"
+    build:
+      context: ./
+    volumes:
+      - "./:/root/build"
+      - ~/.sbt:/root/.sbt
+      - ~/.ivy2:/root/.ivy2
+      - ~/.m2:/root/.m2
+    environment:
+      - POSTGRES_USER=user-root
+      - POSTGRES_PASSWORD=user-root
+      - POSTGRES_DB=expenses-tracker
+    depends_on:
+      - db

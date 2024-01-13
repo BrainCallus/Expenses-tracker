@@ -1,0 +1,7 @@
+@(error: String="", forr: String, show:Boolean=false)
+<tr style="@if(show){} else{display:none} ">
+    <td>&nbsp;</td>
+    <td>
+    @spanError(error, forr)
+    </td>
+</tr>

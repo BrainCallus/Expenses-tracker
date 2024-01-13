@@ -1,0 +1,57 @@
+@import views.html
+@()(implicit request: RequestHeader, flash: Flash)
+
+@main("Login") {
+    <div style="padding: 4em 4em 10em;">
+
+        <form id="enterForm" method="post" action="@routes.LoginController.loginUser">
+            <input type="hidden" name="submitted" value="true"/>
+            @helper.CSRF.formField
+            <input type="hidden" name="fp" value=""/>
+            <table class="enable-autofocus enable-error-autofocus" style="margin-left: auto;
+                margin-right: auto;">
+                <caption style="font-size: 125%;
+                    text-align: center;
+                    padding: 0.25em;">Login Form</caption>
+                <tr>
+                    <td style="width: 8em;
+                        text-align: right;
+                        padding: 0.5em;">
+                        Login:
+                    </td>
+                    <td>
+                        <label>
+                            <input name="login" style="width: 220px;"/>
+                        </label>
+                    </td>
+                </tr>
+                @html.fieldErrorFlash(flash, "login")
+                <tr>
+                    <td style="width: 8em;
+                        text-align: right;
+                        padding: 0.5em;">
+                        Password:
+                    </td>
+                    <td>
+                        <label>
+                            <input type="password" name="password" style="width: 220px;"/>
+                        </label>
+                    </td>
+                </tr>
+                @fieldErrorFlash(flash, "password")
+                <tr>
+                    <td>&nbsp;</td>
+                    <td style="text-align: left;
+                        padding-top: 1em;">
+                        <div style="margin: 0 auto;
+                            text-align: left;">
+                            <input type="submit" name="submit" value="Login" style="margin: 0.5em 1em 0 0;
+                                width: 90px;"/>
+                            @fieldErrorFlash(flash, "general", justSpan = true)
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </form>
+    </div>
+}(request, flash)

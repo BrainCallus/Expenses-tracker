@@ -1,0 +1,23 @@
+@(message: String, isError: Boolean)
+
+<div id="top-messagebox" class="messagebox @if(isError) {messagebox-red} else {messagebox-brown} ">
+    <span>@message</span>
+</div>
+<script type="text/javascript">
+        const topMessageBox = document.getElementById("top-messagebox");
+        $(topMessageBox).css("left", "calc(50% - " + topMessageBox.offsetWidth / 2 + "px)");
+        const timeout = 10000;
+        const start = Date.now();
+        const hideMessage = function () {
+            $(topMessageBox).hide(500);
+        }
+
+        let timer = setTimeout(hideMessage, timeout);
+
+        topMessageBox.addEventListener("mouseover", function () {
+            clearTimeout(timer);
+        });
+        topMessageBox.addEventListener("mouseleave", function () {
+            timer = setTimeout(hideMessage, Math.max(1000, timeout + start - Date.now()));
+        });
+</script>

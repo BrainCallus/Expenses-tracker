@@ -1,0 +1,14 @@
+@(flash: Flash, key: String, justSpan: Boolean = false)
+
+@defining(flash.get(key)) {
+    case Some(err) =>{
+        @if(justSpan) {
+            @spanError(err, key)
+        } else {
+          @fieldError(err, key, show=true)
+        }
+      }
+    case None => {
+    }
+}
+

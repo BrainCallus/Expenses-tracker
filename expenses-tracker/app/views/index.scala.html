@@ -1,0 +1,14 @@
+@()(implicit request: RequestHeader, flash: Flash)
+
+@main("Welcome to Play") {
+    <div style="position: relative;
+        left: 50%">
+        <h1 style="font-size: 20px;">Welcome to ExpensesTracker!</h1>
+        @defining(request.session.get("userName")) {
+            case Some(userName) => {
+                @userName | <a href="/my-expenses" style="font-size: 24px;">My expenses</a>
+            }
+            case None => {}
+        }
+    </div>
+}

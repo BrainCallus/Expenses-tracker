@@ -1,0 +1,51 @@
+.messagebox {
+    text-align: center;
+    font-weight: bold;
+    position: fixed;
+    width: auto;
+    z-index: 10000;
+}
+
+.messagebox span {
+    display: inline-block;
+    z-index: 2048;
+    position: relative;
+    max-width: 50em;
+    margin: 0.5em;
+    padding: 0.25em;
+    border-radius: 4px;
+    overflow-wrap: break-word;
+}
+
+.messagebox-brown span {
+    border: 1px solid rgb(204, 204, 204);
+    background-color: rgb(248, 233, 161);
+}
+
+.messagebox-red span {
+    border: 1px solid rgb(204, 204, 204);
+    background-color: rgb(248, 100, 100);
+}
+
+.messagebox-gray span {
+    border: 1px solid #909090;
+    background-color: #f0f0f0;
+}
+
+.messagebox :hover {
+    outline: solid 1px;
+}
+
+.messagebox-brown :hover {
+    border-color: #e7c12e;
+    outline-color: #e7c12e;
+}
+
+.messagebox-red :hover {
+    border-color: #ab0f0f;
+    outline-color: #ab0f0f;
+}
+
+.messagebox-gray :hover {
+    outline-color: #909090;
+}

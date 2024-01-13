@@ -1,0 +1,61 @@
+@(message: String)(implicit request: RequestHeader, flash: Flash)
+
+@main("Register") {
+    <div style="padding: 4em 4em 10em;">
+        <form method="post" action="@routes.RegisterController.registerUser" id="registrationForm">
+            <input type="hidden" name="submitted" value="true"/>
+            <table class="enable-autofocus enable-error-autofocus" style="margin-left: auto;
+                margin-right: auto;">
+                <caption style="font-size: 125%;
+                    text-align: center;
+                    padding: 0.25em;">Registration Form</caption>
+                <tr>
+                    <td style="text-align: right;
+                        padding: 0.5em;">
+                        Login:
+                    </td>
+                    <td>
+                        <label>
+                            <input name="login"/>
+                        </label>
+                    </td>
+                </tr>
+                @fieldErrorFlash(flash, "login")
+                <tr>
+                    <td style="text-align: right;
+                        padding: 0.5em;">
+                        Name:
+                    </td>
+                    <td>
+                        <label>
+                            <input name="name" class="is_required"/>
+                        </label>
+                    </td>
+                </tr>
+                @fieldErrorFlash(flash, "name")
+
+                <tr>
+                    <td style="text-align: right;
+                        padding: 0.5em;">
+                        Password:
+                    </td>
+                    <td>
+                        <label>
+                            <input type="password" name="password"/>
+                        </label>
+                    </td>
+                </tr>
+                @fieldErrorFlash(flash, "password")
+                <tr>
+                    <td colspan="2" style="text-align: center;
+                        padding-top: 1em;
+                        padding-left: 8em;">
+                        <input type="submit" name="submit" value="Register" style="margin: 0.5em;
+                            width: 90px;"/>
+                        @fieldErrorFlash(flash, "general", justSpan = true)
+                    </td>
+                </tr>
+            </table>
+        </form>
+    </div>
+}(request, flash)

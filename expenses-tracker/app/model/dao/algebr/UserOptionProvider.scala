@@ -9,11 +9,9 @@ import model.dao.algebr.Provider.transact
 import model.entity.useroption._
 
 trait UserOptionProvider[F[_]] extends Provider[F] {
-
   def insert(option: UserOptionRaw): F[Unit]
   def update(option: UserOptionDB, newValue: String): F[Unit]
   def findByKeyAndUserId(key: String, userId: Long): F[Option[UserOptionDB]]
-
 }
 
 object UserOptionProvider {

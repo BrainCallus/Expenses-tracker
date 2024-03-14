@@ -18,7 +18,6 @@ import play.api.libs.json.{JsError, JsSuccess, Json, Reads}
 import play.api.mvc._
 
 class MyExpensesController @Inject() (cc: ControllerComponents) extends AbstractController(cc) {
-
   def view(): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     request.session.get("userId") map { id =>
       val all = ExpenseDao
@@ -120,5 +119,4 @@ class MyExpensesController @Inject() (cc: ControllerComponents) extends Abstract
         Redirect("/my-expenses").flashing("errorMessage" -> "Request is empty")
       })
   }
-
 }

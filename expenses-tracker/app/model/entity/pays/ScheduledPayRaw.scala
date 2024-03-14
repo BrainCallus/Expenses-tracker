@@ -9,12 +9,24 @@ import model.codecs.JsonReader._
 
 import java.time.{LocalDate, LocalDateTime}
 
-final case class ScheduledPayRaw(sum: Double, expenseType: ExpensesType, userId: Long, date: LocalDate, status: ScheduledPayStatus = SCHEDULED) extends ScheduledPay
+final case class ScheduledPayRaw(
+  sum: Double,
+  expenseType: ExpensesType,
+  userId: Long,
+  date: LocalDate,
+  status: ScheduledPayStatus = SCHEDULED
+) extends ScheduledPay
 
 object ScheduledPayRaw {
-  def apply(sum: Double, expenseType: ExpensesType, userId: Long, date: LocalDate, optionStatus: Option[ScheduledPayStatus]): ScheduledPayRaw =
+  def apply(
+    sum: Double,
+    expenseType: ExpensesType,
+    userId: Long,
+    date: LocalDate,
+    optionStatus: Option[ScheduledPayStatus]
+  ): ScheduledPayRaw =
     optionStatus match {
-      case None => new ScheduledPayRaw(sum, expenseType, userId, date)
+      case None         => new ScheduledPayRaw(sum, expenseType, userId, date)
       case Some(status) => new ScheduledPayRaw(sum, expenseType, userId, date, status)
     }
 
@@ -27,7 +39,6 @@ object ScheduledPayRaw {
       status <- getOptionField[ScheduledPayStatus](map, "status")
     } yield ScheduledPayRaw(sum, expenseType, userId, date, status)
   )
-
 
   implicit val writeRaeExpense: Write[ScheduledPayRaw] =
     Write[(Double, String, Long, String, String)].contramap { pay =>

@@ -3,7 +3,6 @@
 @import model.util.DateUtil
 @(expenses: List[ExpenseFull], pastTermScheduled: List[ScheduledPayFull])(implicit request: RequestHeader, flash: Flash)
 
-<!-- TODO: stylesheet and js -->
 @addExpenceOrScheduleForm(formId: String, action: Any) = {
     <form class="left-form addExpenseOrScheduledForm" id="@formId" style="display: none;" method="post" action="@action">
         <input type="hidden" id="action" value="@action">
@@ -167,12 +166,12 @@
         const addExpense = function () {
             $(".form-buttons").hide();
             $("#add-Expense-Form").show();
-        }
+        };
 
         const addScheduledPay = function () {
             $(".form-buttons").hide();
             $("#add-ScheduledPay-Form").show();
-        }
+        };
 
         const closeAddForm = function () {
             const $addExpenseForm = $("#add-Expense-Form");
@@ -189,48 +188,14 @@
             $addScheduledPayForm.hide();
             $(".form-buttons").show();
             return false;
-        }
+        };
 
         const cleanErrors = function ($form) {
             $form.find(".field-error").each(function () {
                 $(this).text("");
                 $(this).closest("tr").hide();
-            })
-        }
-
-        $(".addExpenseOrScheduledForm").submit(function () {
-            const action = $(this).attr("action");
-            @defining(request.session.get("userId")){
-            case None => {
-            window.location = "/login"
-            }
-            case Some(id) => {
-            const data = [];
-            data.push("@id");
-            $(this).find("input, select").each(function () {
-                if (this.type !== 'hidden' && this.type !== 'submit') {
-                    data.push(this.value.toString());
-                }
             });
-            const token = $(this).find("input[name='csrfToken']").val();
-            cleanErrors($(this));
-            fetch(action, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'Csrf-Token': token},
-                body: JSON.stringify(data)
-            }).then(res => res.json()).then(data => {
-                if (data["success"]) {
-                    window.location.reload();
-                } else {
-                    const $fieldError = $(this).find(".for__" + data["errorField"]);
-                    $fieldError.text(data["errorMessage"]);
-                    $fieldError.closest("tr").show();
-                }
-            });
-            return false;
-            }
-            }
-        })
+        };
 
         const getForecast = function () {
             const $button = $("#predict-current-month");
@@ -241,33 +206,29 @@
             const routePredict = document.getElementById("routePredict").value;
 
             @defining(request.session.get("userId")){
-            case None => {
-            window.location = "/login"
-            }
-            case Some(id) => {
-            const userId = @id;
-            fetch(routePredict, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'/*, 'Csrf-Token': csrfToken */},
-                body: JSON.stringify(userId)
-            }).then(res => res.json()).then(data => {
-                const $spanPredicted = $("#predicted");
-                if (data["success"]) {
-                    const parts = data["predicted"].toString().split(".")
-                    $spanPredicted.text(parts[0] + "." + parts[1].substring(0, 2) + " ₽");
+                case None => {window.location = "/login"}
+                case Some(id) => {
+                    const userId = @id;
+                    fetch(routePredict, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'/*, 'Csrf-Token': csrfToken */},
+                        body: JSON.stringify(userId)
+                    }).then(res => res.json()).then(data => {
+                        const $spanPredicted = $("#predicted");
+                        if (data["success"]) {
+                            const parts = data["predicted"].toString().split(".")
+                            $spanPredicted.text(parts[0] + "." + parts[1].substring(0, 2) + " ₽");
 
-                } else {
-                    $spanPredicted.text(data["error"]);
-                    $spanPredicted.addClass("field-error");
-                    $spanPredicted.css("top", "0");
+                        } else {
+                            $spanPredicted.text(data["error"]);
+                            $spanPredicted.addClass("field-error");
+                            $spanPredicted.css("top", "0");
+                        }
+                        $spanPredicted.closest("table").css("display", "block").css("margin", "0.5em 1em 1em 0");
+                    }).then(() => $button.replaceWith($init));
                 }
-                $spanPredicted.closest("table").css("display", "block").css("margin", "0.5em 1em 1em 0");
-            }).then(() => {
-                $button.replaceWith($init);
-            })
             }
-            }
-        }
+        };
 
         const submitConfirmOrDeclinePay = function (status, $form) {
             const payId = parseInt($form.attr("data-payId"));
@@ -279,69 +240,30 @@
             const action = document.getElementById("confirmOrDeclineAction").value;
 
             @defining(request.session.get("userId")) {
-            case None => {window.location = "/login";
-            }
-            case Some(id) => {
-            const userId = @id;
-            fetch(action, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'/*, 'Csrf-Token': csrfToken */},
-                body: JSON.stringify([@id, payId, newStatus])
-            }).then(res => res.json()).then(data => {
-                if (data["success"]) {
-                    $form.remove();
-                } else {
-                    $form.find(".field-error").text(data["error"]);}})
-            }
-            }
-
-            return false;
-        }
-
-        $(".declinePay input").click(function () {
-            return submitConfirmOrDeclinePay("canceled", $(this).closest("form"));
-        });
-
-        $(".confirmPay").click(function () {
-            return submitConfirmOrDeclinePay("fulfilled",  $(this).closest("form"));
-        });
-
-        $(".deleteExpense").click(function () {
-            const expenseId = parseInt($(this).attr("data-id"));
-            if (isNaN(expenseId)) {
-                showMessage("Expense not found");
-                return false;
-            }
-            @defining(request.session.get("userId")) {
-            case None => {window.location = "/login";
-            }
-            case Some(id) => {
-            const userId = @id;
-            fetch("/deleteExpense", {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'/*, 'Csrf-Token': csrfToken */},
-                body: JSON.stringify([expenseId, userId])
-            }).then(res => res.json()).then(data => {
-                if (data["success"]) {
-                    showMessage("Successfully deleted")
-                    setTimeout(() => window.location.reload(), 1000);
-                } else {
-                    window.location = "/login";
+                case None => {window.location = "/login";}
+                case Some(id) => {
+                    fetch(action, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'/*, 'Csrf-Token': csrfToken */},
+                        body: JSON.stringify([@id, payId, newStatus])
+                    }).then(res => res.json()).then(data => {
+                        if (data["success"]) {
+                            $form.remove();
+                        } else {
+                            $form.find(".field-error").text(data["error"]);}})
                 }
-            })
             }
-            }
-            return false;
-        });
 
+            return false;
+        };
 
         const buildLinearGraph = function () {
             let dates = [];
             let prices = [];
 
             @for(expense <- ExpenseService.getSumsByDay(expenses).toList) {
-            dates.push("@DateUtil.dateToStringOrdinal(expense._1)");
-            prices.push(@expense._2);
+                dates.push("@DateUtil.dateToStringOrdinal(expense._1)");
+                prices.push(@expense._2);
             }
             const ctx = document.getElementById('myChart').getContext('2d');
             const myChart = new Chart(ctx, {
@@ -349,7 +271,7 @@
                 data: {
                     labels: dates,
                     datasets: [{
-                        label: 'Day sqend',
+                        label: 'Day spend',
                         data: prices,
                         borderWidth: 1
                     }]
@@ -370,8 +292,8 @@
             let sums = []
 
             @for(expense <- ExpenseService.getSumsByType(expenses).toList) {
-            categories.push("@expense._1.toString");
-            sums.push(@expense._2);
+                categories.push("@expense._1.toString");
+                sums.push(@expense._2);
             }
 
             const ctx = document.getElementById('myPieChart').getContext('2d');
@@ -395,8 +317,75 @@
                     }]
                 }
             });
-
         };
+
+        $(".addExpenseOrScheduledForm").submit(function () {
+            const action = $(this).attr("action");
+            @defining(request.session.get("userId")){
+                case None => {
+                    window.location = "/login"
+                }
+                case Some(id) => {
+                    const data = [];
+                    data.push("@id");
+                    $(this).find("input, select").each(function () {
+                        if (this.type !== 'hidden' && this.type !== 'submit') {
+                            data.push(this.value.toString());
+                        }
+                    });
+                    const token = $(this).find("input[name='csrfToken']").val();
+                    cleanErrors($(this));
+                    fetch(action, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json', 'Csrf-Token': token},
+                        body: JSON.stringify(data)
+                    }).then(res => res.json()).then(data => {
+                        if (data["success"]) {
+                            window.location.reload();
+                        } else {
+                            const $fieldError = $(this).find(".for__" + data["errorField"]);
+                            $fieldError.text(data["errorMessage"]);
+                            $fieldError.closest("tr").show();
+                        }
+                    });
+                    return false;
+                }
+            }
+        });
+
+        $(".declinePay input").click(function () {
+            return submitConfirmOrDeclinePay("canceled", $(this).closest("form"));
+        });
+
+        $(".confirmPay").click(function () {
+            return submitConfirmOrDeclinePay("fulfilled",  $(this).closest("form"));
+        });
+
+        $(".deleteExpense").click(function () {
+            const expenseId = parseInt($(this).attr("data-id"));
+            if (isNaN(expenseId)) {
+                showMessage("Expense not found");
+                return false;
+            }
+            @defining(request.session.get("userId")) {
+                case None => {window.location = "/login";}
+                case Some(id) => {
+                    fetch("/deleteExpense", {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'/*, 'Csrf-Token': csrfToken */},
+                        body: JSON.stringify([expenseId, @id])
+                    }).then(res => res.json()).then(data => {
+                        if (data["success"]) {
+                            showMessage("Successfully deleted")
+                            setTimeout(() => window.location.reload(), 1000);
+                        } else {
+                            window.location = "/login";
+                        }
+                    });
+                }
+            }
+            return false;
+        });
 
         $(".next").click(function () {
             $(".graphChart").css("display", "none")
@@ -428,4 +417,3 @@
         buildLinearGraph();
         buildCircleDiagram();
 </script>
-

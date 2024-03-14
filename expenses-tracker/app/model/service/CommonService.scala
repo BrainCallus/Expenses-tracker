@@ -8,7 +8,6 @@ import model.validation.{Validation, Validator}
 import play.api.mvc.{AnyContent, Request}
 
 object CommonService {
-
   def withValidation[T: JsonReader, R](
     requestParams: Map[String, Seq[String]],
     validatorMap: List[(String, Validator[Option[String], Json])]

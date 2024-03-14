@@ -3,7 +3,6 @@
 
 @main("Login") {
     <div style="padding: 4em 4em 10em;">
-
         <form id="enterForm" method="post" action="@routes.LoginController.loginUser">
             <input type="hidden" name="submitted" value="true"/>
             @helper.CSRF.formField

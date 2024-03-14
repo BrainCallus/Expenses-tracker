@@ -105,5 +105,4 @@ object ForecastService {
       (pays filter (_.status == ScheduledPayStatus.FULFILLED) map (_.sum)).sum / pays.map(_.sum).sum
     }
   }
-
 }

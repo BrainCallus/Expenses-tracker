@@ -4,12 +4,12 @@
   case None => {
     @defining(flash.get("message")) {
       case None => {}
-        case Some(message) => {
-            @justMessageBox(message, isError = false)
-        }
+      case Some(message) => {
+          @justMessageBox(message, isError = false)
+      }
     }
   }
-    case Some(errorMessage) => {
-        @justMessageBox(errorMessage, isError = true)
-    }
+  case Some(errorMessage) => {
+      @justMessageBox(errorMessage, isError = true)
+  }
 }

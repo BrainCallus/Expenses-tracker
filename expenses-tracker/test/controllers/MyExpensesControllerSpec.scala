@@ -397,7 +397,7 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
         )
       }
 
-      "print error if sum is not positive in" in {
+      "print error if sum is not positive" in {
         val notPositiveSum =
           controller.sendPayForm(action, route)("0", ExpensesType.FOOD.toString, account.id.toString, get3Days)
         status(notPositiveSum) mustBe OK

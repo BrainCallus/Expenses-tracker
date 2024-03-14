@@ -6,7 +6,6 @@ import model.service.UserService
 import play.api.mvc._
 
 class RegisterController @Inject() (cc: ControllerComponents) extends AbstractController(cc) {
-
   def renderRegisterForm(): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     Ok(views.html.register(""))
   }

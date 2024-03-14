@@ -26,5 +26,5 @@ object Json {
     case JsonArray(value) => (value map show.show).mkString("[", ", ", "]")
     case Json.JsonObject(value) =>
       (value map (entry => s"\"${entry._1}\": ${show.show(entry._2)}")).mkString("{\n", ",\n", "\n}")
-  } // or just (t: Json) => ??? (called Single Abstract Method)
+  }
 }

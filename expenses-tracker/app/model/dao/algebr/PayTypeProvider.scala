@@ -15,7 +15,6 @@ import model.entity.pays._
 import java.time.LocalDate
 
 trait PayTypeProvider[F[_]] extends Provider[F] {
-
   def find[T: Read](id: Long, isExpense: Boolean)(implicit ev: FullExpenseOrPayEvidence[T]): F[Option[T]]
   def insert[T](entity: T)(implicit ev: V[ExpenseRaw, ScheduledPayRaw, T]): F[Unit]
   def delete[T <: DatabaseEntity](entity: T)(implicit ev: FullExpenseOrPayEvidence[T]): F[Unit]

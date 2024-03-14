@@ -61,10 +61,9 @@ object DBUtils {
         val expense = ExpenseRaw(
           sum,
           categories(Random.nextInt(categories.length)),
-          id + 320,
-          LocalDate.of(2023, month, if (month == 2) math.min(28, day) else day)
+          id + 1,
+          LocalDate.of(LocalDate.now().getYear, month, if (month == 2) math.min(28, day) else day)
         )
-        //ExpenseDao.insert[RawExpense](expense).toEitherDBException().getOrElse(println(s"Insert failed on ${expense.toString}"))
         try {
           ExpenseDao.insert[ExpenseRaw](expense).unsafeRunSync()
         } catch {
@@ -81,6 +80,5 @@ object DBUtils {
       _ <- IO(initExpenses())
     } yield ()
     io.redeem(e => println("Failed to init db \n" + e.toString), _ => println("success")).unsafeRunSync()
-
   }
 }

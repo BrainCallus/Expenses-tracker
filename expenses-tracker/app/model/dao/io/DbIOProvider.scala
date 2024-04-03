@@ -34,10 +34,10 @@ object DbIOProvider {
   } yield xa
 
   private val userProvider: Resource[IO, UserProvider[IO]] = Provider.makeProvider(postgres, UserProvider.make[IO])
-  private val payProvider: Resource[IO, PayTypeProvider[IO]] = Provider.makeProvider(postgres, PayTypeProvider.make[IO])
+   val payProvider: Resource[IO, PayTypeProvider[IO]] = Provider.makeProvider(postgres, PayTypeProvider.make[IO])
   private val scheduledPayProvider: Resource[IO, ScheduledPayProvider[IO]] =
     Provider.makeProvider(postgres, ScheduledPayProvider.make[IO])
-  private val userOptionProvider: Resource[IO, UserOptionProvider[IO]] =
+  val userOptionProvider: Resource[IO, UserOptionProvider[IO]] =
     Provider.makeProvider(postgres, UserOptionProvider.make[IO])
 
   def userOperation[T](f: UserProvider[IO] => IO[T]): IO[T] =

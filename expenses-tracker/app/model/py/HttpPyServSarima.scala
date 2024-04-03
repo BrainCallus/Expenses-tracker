@@ -19,9 +19,9 @@ object HttpPyServSarima {
     val res = for {
       fiber <- task.start
       _ <- IO.pure(println("fiber))")).handleErrorWith { error =>
-        fiber.cancel *> logger.info(error)("Python exception") *> IO.raiseError(
+        fiber.cancel *> logger.info(error)("Python exception") .flatMap( _=>IO.raiseError(
           PyException("error", "Unexpected internal server error. Can't compute forecast")
-        )
+        ))
       }
       aftermath <- fiber.join
     } yield aftermath
@@ -33,8 +33,8 @@ object HttpPyServSarima {
     run(task).unsafeRunSync() match {
       case Canceled() => runOnCancel(task)
       case Errored(e) =>
-        logger.info(e)("finished with error") *> IO.pure(
-          Left(PyException("error", "Unexpected internal server error. Can't compute forecast"))
+        logger.info(e)("finished with error") .flatMap(_ => IO.pure(
+          Left(PyException("error", "Unexpected internal server error. Can't compute forecast")))
         )
       case Succeeded(fa) => fa.map(x => Right(x))
     }

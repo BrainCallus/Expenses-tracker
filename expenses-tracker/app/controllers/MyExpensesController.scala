@@ -1,5 +1,6 @@
 package controllers
 
+import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import com.google.inject.Inject
 import doobie.{Read, Write}
@@ -10,14 +11,17 @@ import model.dao.algebr.PayTypeProvider.FullExpenseOrPayEvidence
 import model.dao.io.ExpenseDao
 import model.entity.DatabaseEntity
 import model.entity.pays._
-import model.service.{ExpenseService, ForecastService}
+import model.service.{ExpenseService, ForecastService, IoImplicits}
 import model.util.DateUtil
 import play.api.mvc.{AbstractController, ControllerComponents}
 import model.validation.ValidationResult.ValidationError
+import org.typelevel.log4cats.SelfAwareStructuredLogger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import play.api.libs.json.{JsError, JsSuccess, Json, Reads}
 import play.api.mvc._
 
 class MyExpensesController @Inject() (cc: ControllerComponents) extends AbstractController(cc) {
+  implicit val logger: SelfAwareStructuredLogger[IO] = Slf4jLogger.getLogger[IO]
   def view(): Action[AnyContent] = Action { implicit request: Request[AnyContent] =>
     request.session.get("userId") map { id =>
       val all = ExpenseDao
@@ -51,10 +55,13 @@ class MyExpensesController @Inject() (cc: ControllerComponents) extends Abstract
 
   def monthPredict(): Action[AnyContent] = Action { implicit request =>
     withJsonBody[Long] { id =>
-      ForecastService.getMonthForecast(id) match {
-        case Left(err)    => Ok(Json.toJson(Map("success" -> "", "error" -> err.message)))
-        case Right(value) => Ok(Json.toJson(Map("success" -> 1.0.doubleValue, "predicted" -> value)))
-      }
+      IoImplicits.forecastService.monthForecast(id).value.map(_.fold(
+        err => Ok(Json.toJson(Map("success" -> "", "error" -> err.message))),
+        value => Ok(Json.toJson(Map("success" -> 1.0.doubleValue, "predicted" -> value)))
+      )).handleError(ex => {
+        logger.error(ex)("Unhandled exception from ForecastService")
+        Ok(Json.toJson(Map("success" -> "", "error" -> ex.getMessage)))
+      }).unsafeRunSync()
     }
   }
 

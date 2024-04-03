@@ -3,9 +3,9 @@
 
 @main("Login") {
     <div style="padding: 4em 4em 10em;">
-        <form id="enterForm" method="post" action="@routes.LoginController.loginUser">
-            <input type="hidden" name="submitted" value="true"/>
+        <form id="enterForm" method="post" action="@routes.LoginController.loginUser()">
             @helper.CSRF.formField
+            <input type="hidden" name="submitted" value="true"/>
             <input type="hidden" name="fp" value=""/>
             <table class="enable-autofocus enable-error-autofocus" style="margin-left: auto;
                 margin-right: auto;">

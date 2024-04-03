@@ -2,7 +2,8 @@
 
 @main("Register") {
     <div style="padding: 4em 4em 10em;">
-        <form method="post" action="@routes.RegisterController.registerUser" id="registrationForm">
+        <form method="post" action="@routes.RegisterController.registerUser()" id="registrationForm">
+            @helper.CSRF.formField
             <input type="hidden" name="submitted" value="true"/>
             <table class="enable-autofocus enable-error-autofocus" style="margin-left: auto;
                 margin-right: auto;">

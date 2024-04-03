@@ -10,8 +10,9 @@ import model.exception.DBException
 import org.apache.commons.codec.digest.DigestUtils
 
 import java.nio.charset.StandardCharsets
-import java.time.LocalDate
+import java.time.{LocalDate, Month}
 import scala.util.Random
+import Ternary._
 
 object DBUtils {
   def getPasswordEncrypted(password: String): String = encrypt(password)
@@ -55,14 +56,20 @@ object DBUtils {
   private def initExpenses(): Unit = {
     for (id <- loginName.indices) {
       for (_ <- 0 until 300) {
+        val today = LocalDate.now()
+        val year = today.getYear - Random.nextInt(2) // current or previous
+        val yearIsCurYear: Boolean = year == today.getYear
+        val month = Random.nextInt( if (year == today.getYear) today.getMonthValue else  11) + 1
+        val day = Random.nextInt(
+          Ternary(yearIsCurYear && month==today.getMonthValue) ?? (today.getDayOfMonth, Month.of(month).maxLength())
+        ) + 1
+
         val sum = Random.nextInt(7000) + 100
-        val month = Random.nextInt(11) + 1
-        val day = Random.nextInt(LocalDate.of(2023, month, 1).getMonth.maxLength()) + 1
         val expense = ExpenseRaw(
           sum,
           categories(Random.nextInt(categories.length)),
           id + 1,
-          LocalDate.of(LocalDate.now().getYear, month, if (month == 2) math.min(28, day) else day)
+          LocalDate.of(year, month,  Ternary(month == 2) ?? (math.min(28, day), day))
         )
         try {
           ExpenseDao.insert[ExpenseRaw](expense).unsafeRunSync()

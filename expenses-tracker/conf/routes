@@ -1,26 +1,24 @@
 GET     /                           controllers.HomeController.index()
 GET     /login                      controllers.LoginController.renderLoginForm()
 GET     /register                   controllers.RegisterController.renderRegisterForm()
-GET     /logout                     controllers.LoginController.logout
+GET     /logout                     controllers.LoginController.logout()
 GET     /my-expenses                controllers.MyExpensesController.view()
 
 
-+nocsrf
-POST    /registerUser               controllers.RegisterController.registerUser
-+nocsrf
-POST    /loginUser                  controllers.LoginController.loginUser
-+noscrf
-POST    /addExpense                 controllers.MyExpensesController.addExpense
-+noscrf
+
+POST    /registerUser               controllers.RegisterController.registerUser()
+
+POST    /loginUser                  controllers.LoginController.loginUser()
+
+POST    /addExpense                 controllers.MyExpensesController.addExpense()
+
 POST    /addSheduledPay             controllers.MyExpensesController.addSchedulePay()
 
-+nocsrf
 POST   /changeShecduledStatus       controllers.MyExpensesController.changeScheduledStatus()
 
-+nocsrf
 POST   /monthPredict                controllers.MyExpensesController.monthPredict()
-+nocsrf
-POST   /deleteExpense               controllers.MyExpensesController.deleteExpense
+
+POST   /deleteExpense               controllers.MyExpensesController.deleteExpense()
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)

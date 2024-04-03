@@ -5,8 +5,8 @@
 
 @addExpenceOrScheduleForm(formId: String, action: Any) = {
     <form class="left-form addExpenseOrScheduledForm" id="@formId" style="display: none;" method="post" action="@action">
-        <input type="hidden" id="action" value="@action">
         @helper.CSRF.formField
+        <input type="hidden" id="action" value="@action">
         <table style="margin-bottom: 1em">
             <caption>@formId.capitalize.split("-").mkString(" ")</caption>
             <tr>
@@ -53,9 +53,10 @@
     </form>
 }
 @confirmOrDeclineScheduledForm(scheduled: ScheduledPayFull) = {
-    <form class="left-form confirmOrCancelScheduled" data-payId="@scheduled.id" method="post" action="@routes.MyExpensesController.changeScheduledStatus()">
-        <input type="hidden" id="confirmOrDeclineAction" value="@routes.MyExpensesController.changeScheduledStatus()">
+    <form class="left-form confirmOrCancelScheduled" data-payId="@scheduled.id"
+    method="post" action="@routes.MyExpensesController.changeScheduledStatus()">
         @helper.CSRF.formField
+        <input type="hidden" id="confirmOrDeclineAction" value="@routes.MyExpensesController.changeScheduledStatus()">
         <table>
             <tr>
                 <td class="description">
@@ -163,257 +164,259 @@
     }
 }
 <script>
-        const addExpense = function () {
-            $(".form-buttons").hide();
-            $("#add-Expense-Form").show();
-        };
+    const csrfToken = document.getElementById("csrfToken").value;
+    const addExpense = function () {
+        $(".form-buttons").hide();
+        $("#add-Expense-Form").show();
+    };
 
-        const addScheduledPay = function () {
-            $(".form-buttons").hide();
-            $("#add-ScheduledPay-Form").show();
-        };
+    const addScheduledPay = function () {
+        $(".form-buttons").hide();
+        $("#add-ScheduledPay-Form").show();
+    };
 
-        const closeAddForm = function () {
-            const $addExpenseForm = $("#add-Expense-Form");
-            $addExpenseForm.find("input, select").each(function () {
-                this.value = this.defaultValue;
-            });
-            cleanErrors($addExpenseForm);
-            $addExpenseForm.hide();
+    const closeAddForm = function () {
+        const $addExpenseForm = $("#add-Expense-Form");
+        $addExpenseForm.find("input, select").each(function () {
+            this.value = this.defaultValue;
+        });
+        cleanErrors($addExpenseForm);
+        $addExpenseForm.hide();
 
-            const $addScheduledPayForm = $("#add-ScheduledPay-Form");
-            $addScheduledPayForm.find("input, select").each(function () {
-                this.value = this.defaultValue;
-            });
-            $addScheduledPayForm.hide();
-            $(".form-buttons").show();
+        const $addScheduledPayForm = $("#add-ScheduledPay-Form");
+        $addScheduledPayForm.find("input, select").each(function () {
+            this.value = this.defaultValue;
+        });
+        $addScheduledPayForm.hide();
+        $(".form-buttons").show();
+        return false;
+    };
+
+    const cleanErrors = function ($form) {
+        $form.find(".field-error").each(function () {
+            $(this).text("");
+            $(this).closest("tr").hide();
+        });
+    };
+
+    const getForecast = function () {
+        const $button = $("#predict-current-month");
+        const $init = $button.clone();
+        $button.prop("disabled", true);
+        $button.text("It may took a time. Please wait");
+
+        const routePredict = document.getElementById("routePredict").value;
+
+        @defining(request.session.get("userId")){
+            case None => {window.location = "/login"}
+            case Some(id) => {
+                const userId = @id;
+
+                fetch(routePredict, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'Csrf-Token': csrfToken },
+                    body: JSON.stringify(userId)
+                }).then(res => res.json()).then(data => {
+                    const $spanPredicted = $("#predicted");
+                    if (data["success"]) {
+                        const parts = data["predicted"].toString().split(".")
+                        $spanPredicted.text(parts[0] + "." + parts[1].substring(0, 2) + " ₽");
+
+                    } else {
+                        $spanPredicted.text(data["error"]);
+                        $spanPredicted.addClass("field-error");
+                        $spanPredicted.css("top", "0");
+                    }
+                    $spanPredicted.closest("table").css("display", "block").css("margin", "0.5em 1em 1em 0");
+                }).then(() => $button.replaceWith($init));
+            }
+        }
+    };
+
+    const submitConfirmOrDeclinePay = function (status, $form) {
+        const payId = parseInt($form.attr("data-payId"));
+        if (isNaN(payId)) {
+            $(".field-error.error" + payId).text("Invalid pay id");
             return false;
-        };
+        }
+        const newStatus = status;
+        const action = document.getElementById("confirmOrDeclineAction").value;
 
-        const cleanErrors = function ($form) {
-            $form.find(".field-error").each(function () {
-                $(this).text("");
-                $(this).closest("tr").hide();
-            });
-        };
-
-        const getForecast = function () {
-            const $button = $("#predict-current-month");
-            const $init = $button.clone();
-            $button.prop("disabled", true);
-            $button.text("It may took a time. Please wait");
-
-            const routePredict = document.getElementById("routePredict").value;
-
-            @defining(request.session.get("userId")){
-                case None => {window.location = "/login"}
-                case Some(id) => {
-                    const userId = @id;
-                    fetch(routePredict, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'/*, 'Csrf-Token': csrfToken */},
-                        body: JSON.stringify(userId)
-                    }).then(res => res.json()).then(data => {
-                        const $spanPredicted = $("#predicted");
-                        if (data["success"]) {
-                            const parts = data["predicted"].toString().split(".")
-                            $spanPredicted.text(parts[0] + "." + parts[1].substring(0, 2) + " ₽");
-
-                        } else {
-                            $spanPredicted.text(data["error"]);
-                            $spanPredicted.addClass("field-error");
-                            $spanPredicted.css("top", "0");
-                        }
-                        $spanPredicted.closest("table").css("display", "block").css("margin", "0.5em 1em 1em 0");
-                    }).then(() => $button.replaceWith($init));
-                }
+        @defining(request.session.get("userId")) {
+            case None => {window.location = "/login";}
+            case Some(id) => {
+                fetch(action, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'Csrf-Token': csrfToken},
+                    body: JSON.stringify([@id, payId, newStatus])
+                }).then(res => res.json()).then(data => {
+                    if (data["success"]) {
+                        $form.remove();
+                    } else {
+                        $form.find(".field-error").text(data["error"]);}})
             }
-        };
+        }
 
-        const submitConfirmOrDeclinePay = function (status, $form) {
-            const payId = parseInt($form.attr("data-payId"));
-            if (isNaN(payId)) {
-                $(".field-error.error" + payId).text("Invalid pay id");
-                return false;
-            }
-            const newStatus = status;
-            const action = document.getElementById("confirmOrDeclineAction").value;
+        return false;
+    };
 
-            @defining(request.session.get("userId")) {
-                case None => {window.location = "/login";}
-                case Some(id) => {
-                    fetch(action, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'/*, 'Csrf-Token': csrfToken */},
-                        body: JSON.stringify([@id, payId, newStatus])
-                    }).then(res => res.json()).then(data => {
-                        if (data["success"]) {
-                            $form.remove();
-                        } else {
-                            $form.find(".field-error").text(data["error"]);}})
-                }
-            }
+    const buildLinearGraph = function () {
+        let dates = [];
+        let prices = [];
 
-            return false;
-        };
-
-        const buildLinearGraph = function () {
-            let dates = [];
-            let prices = [];
-
-            @for(expense <- ExpenseService.getSumsByDay(expenses).toList) {
-                dates.push("@DateUtil.dateToStringOrdinal(expense._1)");
-                prices.push(@expense._2);
-            }
-            const ctx = document.getElementById('myChart').getContext('2d');
-            const myChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: dates,
-                    datasets: [{
-                        label: 'Day spend',
-                        data: prices,
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
+        @for(expense <- ExpenseService.getSumsByDay(expenses).toList) {
+            dates.push("@DateUtil.dateToStringOrdinal(expense._1)");
+            prices.push(@expense._2);
+        }
+        const ctx = document.getElementById('myChart').getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: 'Day spend',
+                    data: prices,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
                     }
                 }
-            });
-            myChart.draw();
-        };
-
-        const buildCircleDiagram = function () {
-            let categories = []
-            let sums = []
-
-            @for(expense <- ExpenseService.getSumsByType(expenses).toList) {
-                categories.push("@expense._1.toString");
-                sums.push(@expense._2);
-            }
-
-            const ctx = document.getElementById('myPieChart').getContext('2d');
-            const myPieChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: categories,
-                    datasets: [{
-                        label: 'Расходы по категориям',
-                        data: sums,
-                        backgroundColor: [
-                            'rgba(250,65,106,0.6)',
-                            'rgba(252,216,35,0.6)',
-                            'rgba(57,219,3,0.6)',
-                            'rgba(0,231,130,0.6)',
-                            'rgba(15,106,93,0.6)',
-                            'rgba(17,107,154,0.6)',
-                            'rgba(65,23,170,0.6)'
-                        ],
-                        hoverOffset: 4
-                    }]
-                }
-            });
-        };
-
-        $(".addExpenseOrScheduledForm").submit(function () {
-            const action = $(this).attr("action");
-            @defining(request.session.get("userId")){
-                case None => {
-                    window.location = "/login"
-                }
-                case Some(id) => {
-                    const data = [];
-                    data.push("@id");
-                    $(this).find("input, select").each(function () {
-                        if (this.type !== 'hidden' && this.type !== 'submit') {
-                            data.push(this.value.toString());
-                        }
-                    });
-                    const token = $(this).find("input[name='csrfToken']").val();
-                    cleanErrors($(this));
-                    fetch(action, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json', 'Csrf-Token': token},
-                        body: JSON.stringify(data)
-                    }).then(res => res.json()).then(data => {
-                        if (data["success"]) {
-                            window.location.reload();
-                        } else {
-                            const $fieldError = $(this).find(".for__" + data["errorField"]);
-                            $fieldError.text(data["errorMessage"]);
-                            $fieldError.closest("tr").show();
-                        }
-                    });
-                    return false;
-                }
             }
         });
+        myChart.draw();
+    };
 
-        $(".declinePay input").click(function () {
-            return submitConfirmOrDeclinePay("canceled", $(this).closest("form"));
+    const buildCircleDiagram = function () {
+        let categories = []
+        let sums = []
+
+        @for(expense <- ExpenseService.getSumsByType(expenses).toList) {
+            categories.push("@expense._1.toString");
+            sums.push(@expense._2);
+        }
+
+        const ctx = document.getElementById('myPieChart').getContext('2d');
+        const myPieChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: categories,
+                datasets: [{
+                    label: 'Расходы по категориям',
+                    data: sums,
+                    backgroundColor: [
+                        'rgba(250,65,106,0.6)',
+                        'rgba(252,216,35,0.6)',
+                        'rgba(57,219,3,0.6)',
+                        'rgba(0,231,130,0.6)',
+                        'rgba(15,106,93,0.6)',
+                        'rgba(17,107,154,0.6)',
+                        'rgba(65,23,170,0.6)'
+                    ],
+                    hoverOffset: 4
+                }]
+            }
         });
+    };
 
-        $(".confirmPay").click(function () {
-            return submitConfirmOrDeclinePay("fulfilled",  $(this).closest("form"));
-        });
-
-        $(".deleteExpense").click(function () {
-            const expenseId = parseInt($(this).attr("data-id"));
-            if (isNaN(expenseId)) {
-                showMessage("Expense not found");
+    $(".addExpenseOrScheduledForm").submit(function () {
+        const action = $(this).attr("action");
+        @defining(request.session.get("userId")){
+            case None => {
+                window.location = "/login"
+            }
+            case Some(id) => {
+                const data = [];
+                data.push("@id");
+                $(this).find("input, select").each(function () {
+                    if (this.type !== 'hidden' && this.type !== 'submit') {
+                        data.push(this.value.toString());
+                    }
+                });
+                const token = $(this).find("input[name='csrfToken']").val();
+                cleanErrors($(this));
+                fetch(action, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'Csrf-Token': token},
+                    body: JSON.stringify(data)
+                }).then(res => res.json()).then(data => {
+                    if (data["success"]) {
+                        window.location.reload();
+                    } else {
+                        const $fieldError = $(this).find(".for__" + data["errorField"]);
+                        $fieldError.text(data["errorMessage"]);
+                        $fieldError.closest("tr").show();
+                    }
+                });
                 return false;
             }
-            @defining(request.session.get("userId")) {
-                case None => {window.location = "/login";}
-                case Some(id) => {
-                    fetch("/deleteExpense", {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'/*, 'Csrf-Token': csrfToken */},
-                        body: JSON.stringify([expenseId, @id])
-                    }).then(res => res.json()).then(data => {
-                        if (data["success"]) {
-                            showMessage("Successfully deleted")
-                            setTimeout(() => window.location.reload(), 1000);
-                        } else {
-                            window.location = "/login";
-                        }
-                    });
-                }
-            }
+        }
+    });
+
+    $(".declinePay input").click(function () {
+        return submitConfirmOrDeclinePay("canceled", $(this).closest("form"));
+    });
+
+    $(".confirmPay").click(function () {
+        return submitConfirmOrDeclinePay("fulfilled",  $(this).closest("form"));
+    });
+
+    $(".deleteExpense").click(function () {
+        const expenseId = parseInt($(this).attr("data-id"));
+        if (isNaN(expenseId)) {
+            showMessage("Expense not found");
             return false;
-        });
+        }
+        @defining(request.session.get("userId")) {
+            case None => {window.location = "/login";}
+            case Some(id) => {
+                fetch("/deleteExpense", {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'Csrf-Token': csrfToken},
+                    body: JSON.stringify([expenseId, @id])
+                }).then(res => res.json()).then(data => {
+                    if (data["success"]) {
+                        showMessage("Successfully deleted")
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        window.location = "/login";
+                    }
+                });
+            }
+        }
+        return false;
+    });
 
-        $(".next").click(function () {
-            $(".graphChart").css("display", "none")
-            const $pie = $(".pieDiagram");
-            $pie.css("display", "block");
-            setTimeout(() => $pie.css("display", "inline-flex"), 500)
-        });
+    $(".next").click(function () {
+        $(".graphChart").css("display", "none")
+        const $pie = $(".pieDiagram");
+        $pie.css("display", "block");
+        setTimeout(() => $pie.css("display", "inline-flex"), 500)
+    });
 
-        $(".prev").click(function () {
-            $(".pieDiagram").css("display", "none");
-            const $graph = $(".graphChart");
-            $graph.css("display", "block");
-            setTimeout(() => $graph.css("display", "inline-flex"), 500);
-        });
+    $(".prev").click(function () {
+        $(".pieDiagram").css("display", "none");
+        const $graph = $(".graphChart");
+        $graph.css("display", "block");
+        setTimeout(() => $graph.css("display", "inline-flex"), 500);
+    });
 
-        const $listers = $(".next, .prev");
-        $listers.mouseenter(function () {
-            const $this = $(this);
-            $this.css("background", "#e5ecf9")
-            $this.css("color", "#bce5e5");
-        });
+    const $listers = $(".next, .prev");
+    $listers.mouseenter(function () {
+        const $this = $(this);
+        $this.css("background", "#e5ecf9")
+        $this.css("color", "#bce5e5");
+    });
 
-        $listers.mouseleave(function () {
-            const $this = $(this);
-            $this.css("background", "none")
-            $this.css("color", "#d8dfe570");
-        });
+    $listers.mouseleave(function () {
+        const $this = $(this);
+        $this.css("background", "none")
+        $this.css("color", "#d8dfe570");
+    });
 
-        buildLinearGraph();
-        buildCircleDiagram();
+    buildLinearGraph();
+    buildCircleDiagram();
 </script>

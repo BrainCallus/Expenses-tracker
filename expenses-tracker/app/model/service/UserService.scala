@@ -26,9 +26,9 @@ trait UserService[F[_]] {
 
 object UserService {
   def make[F[_]: Monad](implicit
-    commonService: CommonServiceAlg[F],
-    userProvider: UserProvider[F],
-    F: MonadCancelThrow[F]
+                        commonService: CommonService[F],
+                        userProvider: UserProvider[F],
+                        F: MonadCancelThrow[F]
   ): UserService[F] = new UserService[F] {
     override def validateRegisterForm(request: Request[AnyContent]): EitherT[F, FieldSpecifiedError, UserWithId] = {
       commonService.formRequest(request)(requestParams =>

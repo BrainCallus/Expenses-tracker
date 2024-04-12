@@ -5,7 +5,6 @@ import doobie.implicits._
 import cats.effect.unsafe.implicits.global
 import doobie.implicits.toSqlInterpolator
 import model.dao.io.DbIOProvider.xa
-import model.dao.io.{ExpenseDao, UserDao}
 import model.entity.pays._
 import model.entity.user.UserWithId
 import model.entity.useroption.UserOptionDB
@@ -13,6 +12,7 @@ import org.scalatest.{Assertion, Assertions}
 import org.scalatest.matchers.should.Matchers
 import util.account._
 import util.account.TestUserAccount._
+import model.service.IoImplicits._
 
 object BaseTests extends Assertions with Matchers {
 
@@ -68,18 +68,18 @@ initiate this actions as a tests meanwhile checking whether that gone successful
     val account = TestUserAccount.createUserAccount(login).unsafeRunSync()
     assertUserExist(login)
     assertResult(account.scheduledPays.length)(
-      ExpenseDao.findAllForUser[ScheduledPayFull](account.id, issExpense = false).unsafeRunSync().length
+      payTypeProvider.findByUser[ScheduledPayFull](account.id, isExpense = false).unsafeRunSync().length
     )
     assertResult(account.expenses.length)(
-      ExpenseDao.findAllForUser[ExpenseFull](account.id, issExpense = true).unsafeRunSync().length
+      payTypeProvider.findByUser[ExpenseFull](account.id, isExpense = true).unsafeRunSync().length
     )
   }
 
   def removeUserAccount(user: TestUserAccount): Assertion = {
     TestUserAccount.completelyDropUser(user).unsafeRunSync()
     assertUserNotExist(user.login)
-    ExpenseDao.findAllForUser[ScheduledPayFull](user.id, issExpense = false).unsafeRunSync() shouldBe Nil
-    ExpenseDao.findAllForUser[ExpenseFull](user.id, issExpense = true).unsafeRunSync() shouldBe Nil
+    payTypeProvider.findByUser[ScheduledPayFull](user.id, isExpense = false).unsafeRunSync() shouldBe Nil
+    payTypeProvider.findByUser[ExpenseFull](user.id, isExpense = true).unsafeRunSync() shouldBe Nil
     sql"""SELECT * FROM userOption WHERE userid=${user.id}"""
       .query[UserOptionDB]
       .to[List]
@@ -88,10 +88,10 @@ initiate this actions as a tests meanwhile checking whether that gone successful
   }
 
   def assertUserNotExist(login: String): Assertion = {
-    val result = UserDao.findByLogin(login).unsafeRunSync()
+    val result = userProvider.findByLogin(login).unsafeRunSync()
     result shouldBe None
   }
 
   def assertUserExist(login: String): Assertion =
-    assertResult(true, "Fail to createUser")(UserDao.findByLogin(login).unsafeRunSync().get.isInstanceOf[UserWithId])
+    assertResult(true, "Fail to createUser")(userProvider.findByLogin(login).unsafeRunSync().get.isInstanceOf[UserWithId])
 }

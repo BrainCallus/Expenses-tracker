@@ -1,6 +1,6 @@
 @import model.entity.pays._
-@import model.service.ExpenseService
 @import model.util.DateUtil
+@import model.service.ExpenseService
 @(expenses: List[ExpenseFull], pastTermScheduled: List[ScheduledPayFull])(implicit request: RequestHeader, flash: Flash)
 
 @addExpenceOrScheduleForm(formId: String, action: Any) = {
@@ -252,6 +252,7 @@
                 }).then(res => res.json()).then(data => {
                     if (data["success"]) {
                         $form.remove();
+                        window.location.reload();
                     } else {
                         $form.find(".field-error").text(data["error"]);}})
             }

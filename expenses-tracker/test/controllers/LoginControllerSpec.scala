@@ -122,5 +122,4 @@ class LoginControllerSpec extends PlaySpec with BeforeAndAfterAll with GuiceOneA
       base.BaseTests.removeUserByLogin(login)
     }
   }
-
 }

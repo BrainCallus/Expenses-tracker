@@ -219,5 +219,4 @@ class RegisterControllerSpec extends PlaySpec with BeforeAndAfterAll with GuiceO
       base.BaseTests.removeUserByLogin(login)
     }
   }
-
 }

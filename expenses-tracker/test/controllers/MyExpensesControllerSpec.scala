@@ -16,16 +16,15 @@ import cats.effect.IO
 import doobie.{Read, Update}
 import model.dao.algebr.PayTypeProvider
 import model.dao.io.DbIOProvider.xa
-import model.dao.io.{ExpenseDao, UserOptionDao}
 import play.api.mvc.{Action, AnyContent}
 import doobie.implicits._
 import model.entity.pays._
 import model.entity.useroption.UserOptionRaw
-import model.service.UserOptionService
 import util.account.TestUserAccount._
 import util.account._
 import util.option.TestUserOption.{dropUserOptions, getLastTimeUpdated}
 import util.pays.TestPays.paysInSegment
+import model.service.IoImplicits._
 
 import java.time.{LocalDateTime, ZoneOffset}
 
@@ -152,19 +151,19 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
     }
     "MyExpensesController monthPredict" should {
       "take value form option if last forecast value was taken later then yesterday and last update" in {
-        UserOptionDao
-          .update(getLastTimeUpdated(account.id), getNow.toString)
+        userOptionService.setOption(account.id, getLastTimeUpdated(account.id).key, getNow.toString)
           //.flatMap(_ => IO.sleep(2.second))
-          .flatMap(_ => UserOptionDao.insert(UserOptionRaw("forecast", "30000", account.id, getNow)))
+          .flatMap(_ => userOptionProvider.insert(UserOptionRaw("forecast", "30000", account.id, getNow)))
           .unsafeRunSync()
 
         val lastUpdated = getLastTimeUpdated(account.id)
-        val forecastOpt = UserOptionDao.findByKeyAndUserId("forecast", account.id).get
+        val forecastOpt = userOptionService.findOption("forecast", account.id).unsafeRunSync().get
         forecastOpt.updationTime.compareTo(lastUpdated.updationTime) mustBe 1
         val forecast = controller.sendForecastRequest(account.id)
         status(forecast) mustBe OK
         contentAsString(forecast) must include("{\"success\":1,\"predicted\":30000}")
-        val newForecastOpt = UserOptionDao.findByKeyAndUserId("forecast", account.id).get
+
+        val newForecastOpt = userOptionService.findOption("forecast", account.id).unsafeRunSync().get
         newForecastOpt.updationTime.compareTo(forecastOpt.updationTime) mustBe 0
       }
 
@@ -180,27 +179,27 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
         forceSetOption(UserOptionRaw("lastTimeUpdated", lastUpdateTime.toString, account.id, lastUpdateTime), "2")
 
         val lastUpdated = getLastTimeUpdated(account.id)
-        val forecastOpt = UserOptionDao.findByKeyAndUserId("forecast", account.id).get
+        val forecastOpt = userOptionService.findOption("forecast", account.id).unsafeRunSync().get
         lastUpdated.updationTime.compareTo(forecastOpt.updationTime) mustBe -1
         val startTime = getNow
         val forecast = controller.sendForecastRequest(account.id)
         // accelerated ))) but still much more slowly than cached
         assert(getNow.toEpochSecond(ZoneOffset.UTC) - startTime.toEpochSecond(ZoneOffset.UTC) > 10)
         status(forecast) mustBe OK
-        val newForecastOpt = UserOptionDao.findByKeyAndUserId("forecast", account.id).get
+        val newForecastOpt = userOptionService.findOption("forecast", account.id).unsafeRunSync().get
         newForecastOpt.updationTime.compareTo(forecastOpt.updationTime) mustBe 1
       }
 
       "request forecast from server if forecast older then lastUpdateTime" in {
-        UserOptionService.setOption(account.id, "lastTimeUpdated", getNow.toString).unsafeRunSync()
+        userOptionService.setOption(account.id, "lastTimeUpdated", getNow.toString).unsafeRunSync()
         val lastTimeUpdatedOt = getLastTimeUpdated(account.id)
-        val forecastOpt = UserOptionDao.findByKeyAndUserId("forecast", account.id).get
+        val forecastOpt = userOptionService.findOption("forecast", account.id).unsafeRunSync().get
         lastTimeUpdatedOt.updationTime.compareTo(forecastOpt.updationTime) mustBe 1
         val startTime = getNow
         val forecast = controller.sendForecastRequest(account.id)
         assert(getNow.toEpochSecond(ZoneOffset.UTC) - startTime.toEpochSecond(ZoneOffset.UTC) > 10)
         status(forecast) mustBe OK
-        val newForecastOpt = UserOptionDao.findByKeyAndUserId("forecast", account.id).get
+        val newForecastOpt = userOptionService.findOption("forecast", account.id).unsafeRunSync().get
         newForecastOpt.updationTime.compareTo(forecastOpt.updationTime) mustBe 1
       }
 
@@ -215,7 +214,7 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
       }
       "should return error if user have no expenses cause server can't compute predict for this case" in {
         BaseTests.withNewBlankUser(u => {
-          UserOptionService.setOption(u.id, "lastTimeUpdated", getNow.toString)
+          userOptionService.setOption(u.id, "lastTimeUpdated", getNow.toString)
           val forecast = controller.sendForecastRequest(u.id)
           status(forecast) mustBe OK
           contentAsString(forecast) must include(
@@ -237,14 +236,14 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
         status(change) mustBe OK
         val newLastUpdated = getLastTimeUpdated(account.id)
         newLastUpdated.updationTime.compareTo(lastTimeUpdatedOption.updationTime) mustBe 1
-        ExpenseDao
-          .find[ScheduledPayFull](toCancel.id, "false")
+        payTypeProvider
+          .find[ScheduledPayFull](toCancel.id, isExpense = false)
           .map(_.get)
           .unsafeRunSync()
           .status mustBe ScheduledPayStatus.CANCELED
 
-        val initSum = ExpenseDao
-          .findAllForUser[ExpenseFull](account.id, issExpense = true)
+        val initSum = payTypeProvider
+          .findByUser[ExpenseFull](account.id, isExpense = true)
           .unsafeRunSync()
           .map(_.sum)
           .sum
@@ -252,13 +251,13 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
         status(change2) mustBe OK
         val updated2 = getLastTimeUpdated(account.id)
         updated2.updationTime.compareTo(newLastUpdated.updationTime) mustBe 1
-        ExpenseDao
-          .find[ScheduledPayFull](toConfirm.id, "false")
+        payTypeProvider
+          .find[ScheduledPayFull](toConfirm.id, isExpense = false)
           .map(_.get)
           .unsafeRunSync()
           .status mustBe ScheduledPayStatus.FULFILLED
-        ExpenseDao
-          .findAllForUser[ExpenseFull](account.id, issExpense = true)
+        payTypeProvider
+          .findByUser[ExpenseFull](account.id, isExpense = true)
           .unsafeRunSync()
           .map(_.sum)
           .sum - initSum mustBe toConfirm.sum
@@ -266,8 +265,8 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
 
       "return error if specified pay not found" in {
         val pay = account.getFollowPays().head
-        ExpenseDao.delete[ScheduledPayFull](pay).unsafeRunSync()
-        ExpenseDao.find[ScheduledPayFull](pay.id, "false").unsafeRunSync() mustBe None
+        payTypeProvider.delete[ScheduledPayFull](pay).unsafeRunSync()
+        payTypeProvider.find[ScheduledPayFull](pay.id, isExpense = false).unsafeRunSync() mustBe None
         val change = controller.sendChangeStatusForm(pay.id, account.id, ScheduledPayStatus.CANCELED.toString)
         status(change) mustBe OK
         contentAsString(change) must include("{\"success\":\"\",\"error\":\"Scheduled pay not found\"}")
@@ -302,18 +301,18 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
         val lastTimeUpdated = getLastTimeUpdated(account.id)
         val delete = controller.sendDeleteForm(firstId.id, account.id)
         status(delete) mustBe OK
-        ExpenseDao.find[ExpenseFull](firstId.id, "expense").unsafeRunSync() mustBe None
+        payTypeProvider.find[ExpenseFull](firstId.id, isExpense = true).unsafeRunSync() mustBe None
         val newOption = getLastTimeUpdated(account.id)
         newOption.updationTime.compareTo(lastTimeUpdated.updationTime) mustBe 1
       }
 
       "just reload page if specified pay not found" in {
-        val lastTimeUpdated = UserOptionDao.findByKeyAndUserId("lastTimeUpdated", account.id)
+        val lastTimeUpdated = userOptionService.findOption("lastTimeUpdated", account.id).unsafeRunSync()
         val delete = controller.sendDeleteForm(firstId.id, account.id)
         status(delete) mustBe OK
         contentAsString(delete) must include("{\"success\":true}")
-        ExpenseDao.find[ExpenseFull](firstId.id, "expense").unsafeRunSync() mustBe None
-        val newOption = UserOptionDao.findByKeyAndUserId("lastTimeUpdated", account.id)
+        payTypeProvider.find[ExpenseFull](firstId.id, isExpense = true).unsafeRunSync() mustBe None
+        val newOption = userOptionService.findOption("lastTimeUpdated", account.id).unsafeRunSync()
         newOption.get.updationTime.compareTo(lastTimeUpdated.get.updationTime) mustBe 0
       }
 
@@ -331,7 +330,7 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
           newOpt.updationTime.compareTo(accOpt.updationTime) mustBe 0
           val newAnotherOpt = getLastTimeUpdated(account.id)
           assert(newAnotherOpt.updationTime.compareTo(anotherOpt.updationTime) <= 0)
-          ExpenseDao.find[ExpenseFull](anotherFirst.id, "expense").map(_.get).unsafeRunSync() mustBe anotherFirst
+          payTypeProvider.find[ExpenseFull](anotherFirst.id, isExpense = true).map(_.get).unsafeRunSync() mustBe anotherFirst
         })
       }
     }
@@ -351,17 +350,16 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
       "add new expense for user for correct form data" in {
 
         ExpensesType.values map { eType =>
-          val lastTimeUpdatedOption = UserOptionDao.findByKeyAndUserId("lastTimeUpdated", account.id)
+          val lastTimeUpdatedOption = userOptionService.findOption("lastTimeUpdated", account.id).unsafeRunSync()
           val add = controller.sendPayForm(action, route)("1000", eType.toString, account.id.toString, get3Days)
           status(add) mustBe OK
-          UserOptionDao
-            .findByKeyAndUserId("lastTimeUpdated", account.id)
+          userOptionService.findOption("lastTimeUpdated", account.id).unsafeRunSync()
             .map(_.updationTime)
             .get
             .compareTo(lastTimeUpdatedOption.get.updationTime) mustBe 1
         }
         val newSum =
-          ExpenseDao.findAllForUser[T](account.id, issExpense = isExpense).map(_.map(_.sum).sum).unsafeRunSync()
+          payTypeProvider.findByUser[T](account.id, isExpense = isExpense).map(_.map(_.sum).sum).unsafeRunSync()
         assertResult(1000 * ExpensesType.values.length)(
           newSum - (if (isExpense) account.expenses else account.scheduledPays).map(_.sum).sum
         )
@@ -390,7 +388,7 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
         )
 
         val newSum =
-          ExpenseDao.findAllForUser[T](account.id, issExpense = isExpense).map(_.map(_.sum).sum).unsafeRunSync()
+          payTypeProvider.findByUser[T](account.id, isExpense = isExpense).map(_.map(_.sum).sum).unsafeRunSync()
         // follows from prev test
         assertResult(1000 * ExpensesType.values.length)(
           newSum - (if (isExpense) account.expenses else account.scheduledPays).map(_.sum).sum

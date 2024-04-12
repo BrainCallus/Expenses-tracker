@@ -12,6 +12,7 @@ import util.account._
 
 import java.time.LocalDate
 import scala.util.Random
+import model.service.IoImplicits._
 
 object TestPays {
 
@@ -29,7 +30,7 @@ object TestPays {
     )
 
   def createExpense(userId: Long): IO[Unit] =
-    ExpenseDao.insert[ExpenseRaw](
+    payTypeProvider.insert[ExpenseRaw](
       ExpenseRaw(
         genRandUInt(100, 5000),
         ExpensesType.values(Random.nextInt(ExpensesType.values.length)),
@@ -39,7 +40,7 @@ object TestPays {
     )
 
   def createScheduledPay(userId: Long, dateGen: () => LocalDate): IO[Unit] = {
-    ExpenseDao.insert[ScheduledPayRaw](
+    payTypeProvider.insert[ScheduledPayRaw](
       ScheduledPayRaw(
         genRandUInt(100, 5000),
         ExpensesType.values(Random.nextInt(ExpensesType.values.length)),
@@ -62,7 +63,7 @@ object TestPays {
     account match {
       case _: BlankUserAccount => IO.unit
       case user: AccountWithPays =>
-        mapper(user).foldLeft(IO.unit)((io: IO[Unit], pay: T) => io.flatMap(_ => ExpenseDao.delete[T](pay)))
+        mapper(user).foldLeft(IO.unit)((io: IO[Unit], pay: T) => io.flatMap(_ => payTypeProvider.delete[T](pay)))
     }
 
   def paysInSegment[T <: PayType](pays: List[T], start: LocalDate, end: LocalDate): List[T] =

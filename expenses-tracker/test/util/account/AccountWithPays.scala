@@ -25,7 +25,6 @@ final case class AccountWithPays(
 
   def getPastTermPays(start: LocalDate = LocalDate.of(1999, 1, 1)): List[ScheduledPayFull] =
     paysInSegment[ScheduledPayFull](scheduledPays, start, getYesterday)
-
 }
 
 object AccountWithPays {

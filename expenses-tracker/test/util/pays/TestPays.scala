@@ -1,13 +1,13 @@
 package util.pays
 
-import util.RandomUtil._
 import cats.effect.IO
-import util.CommonTestUtils.{getToday, getYesterday}
-import model.util.DateUtil.DateCalc
 import model.dao.algebr.PayTypeProvider.FullExpenseOrPayEvidence
-import model.dao.io.ExpenseDao
+import model.dao.io.DbIOProvider._
 import model.entity.DatabaseEntity
 import model.entity.pays._
+import model.util.DateUtil.DateCalc
+import util.CommonTestUtils.{getToday, getYesterday}
+import util.RandomUtil._
 import util.account._
 
 import java.time.LocalDate
@@ -29,23 +29,27 @@ object TestPays {
     )
 
   def createExpense(userId: Long): IO[Unit] =
-    ExpenseDao.insert[ExpenseRaw](
-      ExpenseRaw(
-        genRandUInt(100, 5000),
-        ExpensesType.values(Random.nextInt(ExpensesType.values.length)),
-        userId,
-        genRandDate(180, getYesterday)
+    payTypeProvider.use(
+      _.insert[ExpenseRaw](
+        ExpenseRaw(
+          genRandUInt(100, 5000),
+          ExpensesType.values(Random.nextInt(ExpensesType.values.length)),
+          userId,
+          genRandDate(180, getYesterday)
+        )
       )
     )
 
   def createScheduledPay(userId: Long, dateGen: () => LocalDate): IO[Unit] = {
-    ExpenseDao.insert[ScheduledPayRaw](
-      ScheduledPayRaw(
-        genRandUInt(100, 5000),
-        ExpensesType.values(Random.nextInt(ExpensesType.values.length)),
-        userId,
-        dateGen.apply(),
-        ScheduledPayStatus.SCHEDULED
+    payTypeProvider.use(
+      _.insert[ScheduledPayRaw](
+        ScheduledPayRaw(
+          genRandUInt(100, 5000),
+          ExpensesType.values(Random.nextInt(ExpensesType.values.length)),
+          userId,
+          dateGen.apply(),
+          ScheduledPayStatus.SCHEDULED
+        )
       )
     )
   }
@@ -62,7 +66,7 @@ object TestPays {
     account match {
       case _: BlankUserAccount => IO.unit
       case user: AccountWithPays =>
-        mapper(user).foldLeft(IO.unit)((io: IO[Unit], pay: T) => io.flatMap(_ => ExpenseDao.delete[T](pay)))
+        mapper(user).foldLeft(IO.unit)((io: IO[Unit], pay: T) => io.flatMap(_ => payTypeProvider.use(_.delete[T](pay))))
     }
 
   def paysInSegment[T <: PayType](pays: List[T], start: LocalDate, end: LocalDate): List[T] =

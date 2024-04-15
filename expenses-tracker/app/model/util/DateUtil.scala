@@ -1,13 +1,11 @@
 package model.util
 
 import model.dao.io.DbIOProvider
-
 import java.sql.Timestamp
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.annotation.unused
 
 object DateUtil {
-
   def dateToDBString(date: LocalDate) = s"${date.getMonthValue}-${date.getDayOfMonth}-${date.getYear}"
 
   @unused

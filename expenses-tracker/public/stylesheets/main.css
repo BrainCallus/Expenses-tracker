@@ -242,3 +242,19 @@ button.link {
     justify-content: space-between;
     margin-bottom: 5em;
 }
+
+img.logo {
+    display: block;
+    width: 1000px;
+    height: 420px;
+    transform: scale(0.15);
+    transform-origin: top left;
+}
+
+.logo-container {
+    display: inline-block;
+    width: 150px;
+    height: 63px;
+    overflow: hidden;
+    margin-left: 1em;
+}

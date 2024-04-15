@@ -2,7 +2,7 @@ package controllers
 
 import cats.effect.unsafe.implicits.global
 import util.CommonTestUtils.defaultPassword
-import model.dao.io.UserDao
+import model.dao.io.DbIOProvider.userProvider
 import org.scalatest.BeforeAndAfterAll
 import org.scalatestplus.play._
 import org.scalatestplus.play.guice._
@@ -12,7 +12,6 @@ import play.api.test.Helpers._
 import play.api.test._
 
 class RegisterControllerSpec extends PlaySpec with BeforeAndAfterAll with GuiceOneAppPerTest with Injecting {
-
   private val login = "testUser"
 
   "RegisterController initTest" should {
@@ -52,7 +51,7 @@ class RegisterControllerSpec extends PlaySpec with BeforeAndAfterAll with GuiceO
           )
         status(result) mustBe SEE_OTHER
         flash(result).get("message") mustBe Some("Successfully registered")
-        val user = UserDao.findByLogin("testReg").unsafeRunSync().get
+        val user = userProvider.use(_.findByLogin("testReg")).unsafeRunSync().get
         user.login mustBe "testReg"
         user.name mustBe "testRegName"
       } finally {
@@ -219,5 +218,4 @@ class RegisterControllerSpec extends PlaySpec with BeforeAndAfterAll with GuiceO
       base.BaseTests.removeUserByLogin(login)
     }
   }
-
 }

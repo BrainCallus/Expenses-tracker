@@ -1,30 +1,30 @@
 package controllers
 
+import base.BaseTests
+import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import util.CommonTestUtils._
+import doobie.implicits._
+import doobie.{Read, Update}
+import model.dao.algebr.PayTypeProvider
+import model.dao.io.DbIOProvider._
+import model.entity.pays._
+import model.entity.useroption.UserOptionRaw
+import model.service.IoImplicits._
 import model.util.DateUtil.{DateCalc, getNow}
-import play.api.libs.json.{JsValue, Json}
+import org.jsoup.Jsoup
 import org.scalatestplus.play._
 import org.scalatestplus.play.guice._
 import play.api.Play.materializer
+import play.api.libs.json.{JsValue, Json}
+import play.api.mvc.{Action, AnyContent}
 import play.api.test.CSRFTokenHelper._
 import play.api.test.Helpers._
 import play.api.test._
-import org.jsoup.Jsoup
-import base.BaseTests
-import cats.effect.IO
-import doobie.{Read, Update}
-import model.dao.algebr.PayTypeProvider
-import model.dao.io.DbIOProvider.xa
-import play.api.mvc.{Action, AnyContent}
-import doobie.implicits._
-import model.entity.pays._
-import model.entity.useroption.UserOptionRaw
+import util.CommonTestUtils._
 import util.account.TestUserAccount._
 import util.account._
 import util.option.TestUserOption.{dropUserOptions, getLastTimeUpdated}
 import util.pays.TestPays.paysInSegment
-import model.service.IoImplicits._
 
 import java.time.{LocalDateTime, ZoneOffset}
 
@@ -35,7 +35,6 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
   "MyExpensesController tests" should {
     BaseTests.createUserAccount(login)
     allTests().unsafeRunSync()
-
     "MyExpensesController finalizeTest" should {
       "remove previously created user if it exist" in {
         base.BaseTests.removeUserAccount(getUserAccountByLogin(login).unsafeRunSync())
@@ -94,8 +93,7 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
       "show user expenses for past 3 month if user authenticated" in {
         val account = getUserAccountByLogin(login).unsafeRunSync()
         val controller = new MyExpensesController(stubControllerComponents())
-        val myExpensesPage = controller
-          .view()
+        val myExpensesPage = controller.view()
           .apply(FakeRequest(GET, "/my-expenses").withSession("userId" -> account.id.toString).withCSRFToken)
         status(myExpensesPage) mustBe OK
         val contentString = contentAsString(myExpensesPage)
@@ -151,9 +149,9 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
     }
     "MyExpensesController monthPredict" should {
       "take value form option if last forecast value was taken later then yesterday and last update" in {
-        userOptionService.setOption(account.id, getLastTimeUpdated(account.id).key, getNow.toString)
-          //.flatMap(_ => IO.sleep(2.second))
-          .flatMap(_ => userOptionProvider.insert(UserOptionRaw("forecast", "30000", account.id, getNow)))
+        userOptionService
+          .setOption(account.id, getLastTimeUpdated(account.id).key, getNow.toString)
+          .flatMap(_ => userOptionProvider.use(_.insert(UserOptionRaw("forecast", "30000", account.id, getNow))))
           .unsafeRunSync()
 
         val lastUpdated = getLastTimeUpdated(account.id)
@@ -235,15 +233,17 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
         val change = controller.sendChangeStatusForm(toCancel.id, account.id, ScheduledPayStatus.CANCELED.toString)
         status(change) mustBe OK
         val newLastUpdated = getLastTimeUpdated(account.id)
-        newLastUpdated.updationTime.compareTo(lastTimeUpdatedOption.updationTime) mustBe 1
+        newLastUpdated.updationTime.compareTo(lastTimeUpdatedOption.updationTime) mustBe 0
         payTypeProvider
-          .find[ScheduledPayFull](toCancel.id, isExpense = false)
-          .map(_.get)
+          .use(
+            _.find[ScheduledPayFull](toCancel.id, isExpense = false)
+              .map(_.get)
+          )
           .unsafeRunSync()
           .status mustBe ScheduledPayStatus.CANCELED
 
         val initSum = payTypeProvider
-          .findByUser[ExpenseFull](account.id, isExpense = true)
+          .use(_.findByUser[ExpenseFull](account.id, isExpense = true))
           .unsafeRunSync()
           .map(_.sum)
           .sum
@@ -252,12 +252,14 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
         val updated2 = getLastTimeUpdated(account.id)
         updated2.updationTime.compareTo(newLastUpdated.updationTime) mustBe 1
         payTypeProvider
-          .find[ScheduledPayFull](toConfirm.id, isExpense = false)
-          .map(_.get)
+          .use(
+            _.find[ScheduledPayFull](toConfirm.id, isExpense = false)
+              .map(_.get)
+          )
           .unsafeRunSync()
           .status mustBe ScheduledPayStatus.FULFILLED
         payTypeProvider
-          .findByUser[ExpenseFull](account.id, isExpense = true)
+          .use(_.findByUser[ExpenseFull](account.id, isExpense = true))
           .unsafeRunSync()
           .map(_.sum)
           .sum - initSum mustBe toConfirm.sum
@@ -265,8 +267,8 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
 
       "return error if specified pay not found" in {
         val pay = account.getFollowPays().head
-        payTypeProvider.delete[ScheduledPayFull](pay).unsafeRunSync()
-        payTypeProvider.find[ScheduledPayFull](pay.id, isExpense = false).unsafeRunSync() mustBe None
+        payTypeProvider.use(_.delete[ScheduledPayFull](pay)).unsafeRunSync()
+        payTypeProvider.use(_.find[ScheduledPayFull](pay.id, isExpense = false)).unsafeRunSync() mustBe None
         val change = controller.sendChangeStatusForm(pay.id, account.id, ScheduledPayStatus.CANCELED.toString)
         status(change) mustBe OK
         contentAsString(change) must include("{\"success\":\"\",\"error\":\"Scheduled pay not found\"}")
@@ -301,7 +303,7 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
         val lastTimeUpdated = getLastTimeUpdated(account.id)
         val delete = controller.sendDeleteForm(firstId.id, account.id)
         status(delete) mustBe OK
-        payTypeProvider.find[ExpenseFull](firstId.id, isExpense = true).unsafeRunSync() mustBe None
+        payTypeProvider.use(_.find[ExpenseFull](firstId.id, isExpense = true)).unsafeRunSync() mustBe None
         val newOption = getLastTimeUpdated(account.id)
         newOption.updationTime.compareTo(lastTimeUpdated.updationTime) mustBe 1
       }
@@ -311,7 +313,7 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
         val delete = controller.sendDeleteForm(firstId.id, account.id)
         status(delete) mustBe OK
         contentAsString(delete) must include("{\"success\":true}")
-        payTypeProvider.find[ExpenseFull](firstId.id, isExpense = true).unsafeRunSync() mustBe None
+        payTypeProvider.use(_.find[ExpenseFull](firstId.id, isExpense = true)).unsafeRunSync() mustBe None
         val newOption = userOptionService.findOption("lastTimeUpdated", account.id).unsafeRunSync()
         newOption.get.updationTime.compareTo(lastTimeUpdated.get.updationTime) mustBe 0
       }
@@ -330,7 +332,9 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
           newOpt.updationTime.compareTo(accOpt.updationTime) mustBe 0
           val newAnotherOpt = getLastTimeUpdated(account.id)
           assert(newAnotherOpt.updationTime.compareTo(anotherOpt.updationTime) <= 0)
-          payTypeProvider.find[ExpenseFull](anotherFirst.id, isExpense = true).map(_.get).unsafeRunSync() mustBe anotherFirst
+          payTypeProvider
+            .use(_.find[ExpenseFull](anotherFirst.id, isExpense = true).map(_.get))
+            .unsafeRunSync() mustBe anotherFirst
         })
       }
     }
@@ -353,13 +357,15 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
           val lastTimeUpdatedOption = userOptionService.findOption("lastTimeUpdated", account.id).unsafeRunSync()
           val add = controller.sendPayForm(action, route)("1000", eType.toString, account.id.toString, get3Days)
           status(add) mustBe OK
-          userOptionService.findOption("lastTimeUpdated", account.id).unsafeRunSync()
+          userOptionService
+            .findOption("lastTimeUpdated", account.id)
+            .unsafeRunSync()
             .map(_.updationTime)
             .get
             .compareTo(lastTimeUpdatedOption.get.updationTime) mustBe 1
         }
         val newSum =
-          payTypeProvider.findByUser[T](account.id, isExpense = isExpense).map(_.map(_.sum).sum).unsafeRunSync()
+          payTypeProvider.use(_.findByUser[T](account.id, isExpense = isExpense)).map(_.map(_.sum).sum).unsafeRunSync()
         assertResult(1000 * ExpensesType.values.length)(
           newSum - (if (isExpense) account.expenses else account.scheduledPays).map(_.sum).sum
         )
@@ -388,7 +394,7 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
         )
 
         val newSum =
-          payTypeProvider.findByUser[T](account.id, isExpense = isExpense).map(_.map(_.sum).sum).unsafeRunSync()
+          payTypeProvider.use(_.findByUser[T](account.id, isExpense = isExpense)).map(_.map(_.sum).sum).unsafeRunSync()
         // follows from prev test
         assertResult(1000 * ExpensesType.values.length)(
           newSum - (if (isExpense) account.expenses else account.scheduledPays).map(_.sum).sum
@@ -449,7 +455,6 @@ class MyExpensesControllerSpec extends PlaySpec with GuiceOneAppPerTest with Inj
   }
 
   implicit class MyExpensesControllerJsonRequest(controller: MyExpensesController) {
-
     // !!! DO NOT ADJUST TYPE HERE
     private def jsonRequest(f: MyExpensesController => Action[AnyContent], route: String, js: JsValue) = {
       val request = FakeRequest(POST, route)

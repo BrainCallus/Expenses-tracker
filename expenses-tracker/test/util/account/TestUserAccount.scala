@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits.toFunctorOps
 import doobie.implicits._
-import model.dao.io.DbIOProvider.{findNow, xa}
+import model.dao.io.DbIOProvider._
 import model.entity.pays.{ExpenseFull, ScheduledPayFull}
 import model.entity.user.UserWithPassword
 import model.service.IoImplicits._
@@ -29,9 +29,9 @@ object TestUserAccount {
 
   def getNewUserAccountByLogin(login: String): IO[BlankUserAccount] =
     for {
-      u <- userProvider.findByLogin(login).map {
+      u <- userProvider.use(_.findByLogin(login)).map {
         case Some(u) => u
-        case None => throw new SQLException("Just created user not found")
+        case None    => throw new SQLException("Just created user not found")
       }
     } yield BlankUserAccount(u.id, u.login, u.name)
 
@@ -41,7 +41,8 @@ object TestUserAccount {
       account <- {
         for {
           _ <- createUserExpenses(u.id, 200)
-          _ <- createUserFollowScheduledPays(u.id, 20)
+          _ <- createUserFollowScheduledPays(u.id, 50)
+          _ <- createPastUserScheduledPays(u.id, 20)
           _ <- userOptionService.setOption(u.id, "lastTimeUpdated", findNow().toString)
           acc <- getUserAccountByLogin(login)
         } yield acc
@@ -52,13 +53,13 @@ object TestUserAccount {
   def getUserAccountByLogin(login: String): IO[AccountWithPays] = {
     for {
       u <- getNewUserAccountByLogin(login)
-      expenses <- payTypeProvider.findByUser[ExpenseFull](u.id, isExpense = true)
-      pays <- payTypeProvider.findByUser[ScheduledPayFull](u.id, isExpense = false)
+      expenses <- payTypeProvider.use(_.findByUser[ExpenseFull](u.id, isExpense = true))
+      pays <- payTypeProvider.use(_.findByUser[ScheduledPayFull](u.id, isExpense = false))
     } yield AccountWithPays(u, expenses, pays)
   }
 
   def createUser(userLogin: String): IO[Unit] =
-    userProvider.insert(UserWithPassword(userLogin, userLogin, getPasswordEncrypted(defaultPassword)))
+    userProvider.use(_.insert(UserWithPassword(userLogin, userLogin, getPasswordEncrypted(defaultPassword))))
 
   def dropUser(userLogin: String): IO[Unit] = {
     sql"""DELETE FROM "user" WHERE login=$userLogin""".update.run.void.transact(xa)

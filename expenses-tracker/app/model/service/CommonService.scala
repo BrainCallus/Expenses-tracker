@@ -17,7 +17,8 @@ trait CommonService[F[_]] {
   def formRequest[R](request: Request[AnyContent])(
     onBody: Map[String, Seq[String]] => EitherT[F, FieldSpecifiedError, R]
   ): EitherT[F, FieldSpecifiedError, R]
-  def actionFromOption[T, R](option: Option[T])(onNone: => R)(onSome: T => R): R = CommonService.actionFromOption(option)(onNone)(onSome)
+  def actionFromOption[T, R](option: Option[T])(onNone: => R)(onSome: T => R): R =
+    CommonService.actionFromOption(option)(onNone)(onSome)
 }
 
 object CommonService {

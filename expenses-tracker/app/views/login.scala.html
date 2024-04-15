@@ -38,6 +38,7 @@
                     </td>
                 </tr>
                 @fieldErrorFlash(flash, "password")
+                @fieldErrorFlash(flash, "general")
                 <tr>
                     <td>&nbsp;</td>
                     <td style="text-align: left;
@@ -46,7 +47,6 @@
                             text-align: left;">
                             <input type="submit" name="submit" value="Login" style="margin: 0.5em 1em 0 0;
                                 width: 90px;"/>
-                            @fieldErrorFlash(flash, "general", justSpan = true)
                         </div>
                     </td>
                 </tr>

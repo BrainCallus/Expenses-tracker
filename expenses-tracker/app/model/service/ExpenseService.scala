@@ -3,7 +3,7 @@ package model.service
 import cats.data.EitherT
 import cats.effect.kernel.MonadCancelThrow
 import cats.effect.unsafe.implicits.global
-import cats.effect.{IO, Sync}
+import cats.effect.{IO, Resource, Sync}
 import cats.implicits.{toFlatMapOps, toFunctorOps}
 import doobie.{Read, Write}
 import model.codecs.JsonReader
@@ -11,12 +11,10 @@ import model.codecs.JsonWriter._
 import model.dao.algebr.PayTypeProvider.{FullExpenseOrPayEvidence, RawExpenseOrPayEvidence}
 import model.dao.algebr.{PayTypeProvider, ScheduledPayProvider}
 import model.dao.io.DbIOProvider.findNow
-import model.dao.io.ExpenseDao
 import model.entity.DatabaseEntity
 import model.entity.pays.ScheduledPayStatus.FULFILLED
 import model.entity.pays._
 import model.exception.{DBException, FieldSpecifiedError}
-import model.util.DBUtils.DaoOptions
 import model.util.DateUtil
 import model.util.DateUtil.DateCalc
 import model.validation.BaseValidatorsLib._
@@ -37,7 +35,7 @@ trait ExpenseService[F[_]] {
     id: Long,
     userId: Long,
     isExpense: Boolean
-  )(implicit ev: FullExpenseOrPayEvidence[ExpenseOrPay]): EitherT[F, FieldSpecifiedError, Int]
+  )(implicit ev: FullExpenseOrPayEvidence[ExpenseOrPay]): EitherT[F, FieldSpecifiedError, Unit]
   def getPastTermScheduledPays(userId: Long): F[List[ScheduledPayFull]]
   def getPreviousPays(userId: Long): F[List[ScheduledPayFull]]
 
@@ -45,15 +43,15 @@ trait ExpenseService[F[_]] {
     payId: Long,
     newStatus: ScheduledPayStatus,
     userId: Long
-  ): EitherT[F, FieldSpecifiedError, Int]
+  ): EitherT[F, FieldSpecifiedError, Unit]
 }
 
 object ExpenseService {
   def make[F[_]: MonadCancelThrow: Sync](implicit
     commonService: CommonService[F],
     userOptionService: UserOptionService[F],
-    payProvider: PayTypeProvider[F],
-    scheduledPayProvider: ScheduledPayProvider[F]
+    payProvider: Resource[F, PayTypeProvider[F]],
+    scheduledPayProvider: Resource[F, ScheduledPayProvider[F]]
   ): ExpenseService[F] = new ExpenseService[F] {
     implicit val logger: SelfAwareStructuredLogger[F] = Slf4jLogger.getLogger
     override def addExpenseOrSchedulePay[ExpenseOrPay <: PayType: Write: JsonReader](
@@ -64,16 +62,17 @@ object ExpenseService {
         {
           val insertPay = for {
             _ <- setUpdateLastTimeUpdatedOption_(pay.userId)
-            _ <- payProvider.insert(pay)
+            _ <- payProvider.use(_.insert(pay))
           } yield ()
           EitherT.apply(
             MonadCancelThrow[F]
-              .redeem[Unit, Either[FieldSpecifiedError, Unit]](insertPay)(
+              .redeemWith[Unit, Either[FieldSpecifiedError, Unit]](insertPay)(
                 err => {
-                  logger.error(err)(s"Unexpected SQLException while inserting ${pay.getClass.getSimpleName}")
-                  Left(DBException("general", "SQLException: Unable to save operation"))
+                  for {
+                    _ <- logger.error(err)(s"Unexpected SQLException while inserting ${pay.getClass.getSimpleName}")
+                  } yield Left(DBException("general", "SQLException: Unable to save operation"))
                 },
-                Right(_)
+                v => MonadCancelThrow[F].pure(Right(v))
               )
           )
         }
@@ -88,30 +87,31 @@ object ExpenseService {
       id: Long,
       userId: Long,
       isExpense: Boolean
-    )(implicit ev: FullExpenseOrPayEvidence[ExpenseOrPay]): EitherT[F, FieldSpecifiedError, Int] = {
+    )(implicit ev: FullExpenseOrPayEvidence[ExpenseOrPay]): EitherT[F, FieldSpecifiedError, Unit] = {
       for {
-        opt <- EitherT.right(payProvider.find[ExpenseOrPay](id, isExpense))
-        v <- commonService.actionFromOption(opt)(EitherT.rightT[F, FieldSpecifiedError](1))(entity =>
+        opt <- EitherT.right(payProvider.use(_.find[ExpenseOrPay](id, isExpense)))
+        v <- commonService.actionFromOption(opt)(EitherT.rightT[F, FieldSpecifiedError](()))(entity =>
           EitherT.apply({
             val MCancelThrow = MonadCancelThrow[F]
             if (userId != entity.userId) {
-              MCancelThrow.pure(Left[FieldSpecifiedError, Int](ValidationError("error", "You have no access")))
+              MCancelThrow.pure(Left[FieldSpecifiedError, Unit](ValidationError("error", "You have no access")))
             } else {
+
               val del = for {
-                _ <- payProvider.delete(entity)
+                _ <- logger.info(s"deleting ${entity.getClass.getSimpleName} ${entity.id}")
+                _ <- payProvider.use(_.delete(entity))
                 _ <- setUpdateLastTimeUpdatedOption_(userId)
               } yield ()
-              MCancelThrow.flatMap(MCancelThrow.attempt(del))(either =>
-                MCancelThrow.pure(
-                  either.fold(
-                    err => {
-                      logger.error(err)(s"Unexpected SQLException while deleting ${entity.getClass.getSimpleName}")
-                      Left[FieldSpecifiedError, Int](
-                        DBException("error", "SQLException: something went wrong while deleting operation")
-                      )
-                    },
-                    _ => Right(1)
-                  )
+              MCancelThrow.flatMap(MCancelThrow.attempt(del))(
+                _.fold(
+                  err => {
+                    for {
+                      _ <- logger.error(err)(s"Unexpected SQLException while deleting ${entity.getClass.getSimpleName}")
+                    } yield Left[FieldSpecifiedError, Unit](
+                      DBException("error", "SQLException: something went wrong while deleting operation")
+                    )
+                  },
+                  v => MCancelThrow.pure(Right(v))
                 )
               )
             }
@@ -122,75 +122,64 @@ object ExpenseService {
 
     override def getPastTermScheduledPays(userId: Long): F[List[ScheduledPayFull]] = {
       payProvider
-        .findByPeriod[ScheduledPayFull](
-          userId,
-          LocalDate.of(1999, 1, 1),
-          1.daysBefore(findNow().toLocalDate),
-          isExpense = false
+        .use(
+          _.findByPeriod[ScheduledPayFull](
+            userId,
+            LocalDate.of(1999, 1, 1),
+            1.daysBefore(findNow().toLocalDate),
+            isExpense = false
+          )
         )
         .map(pays => pays filter (_.status == ScheduledPayStatus.SCHEDULED))
     }
 
     override def getPreviousPays(userId: Long): F[List[ScheduledPayFull]] = {
       val start = LocalDate.of(1999, 1, 1)
-      payProvider.findByPeriod[ScheduledPayFull](userId, start, 1.daysBefore(findNow().toLocalDate), isExpense = false)
+      payProvider.use(
+        _.findByPeriod[ScheduledPayFull](userId, start, 1.daysBefore(findNow().toLocalDate), isExpense = false)
+      )
     }
 
     override def updateScheduledStatus(
       payId: Long,
       newStatus: ScheduledPayStatus,
       userId: Long
-    ): EitherT[F, FieldSpecifiedError, Int] = {
+    ): EitherT[F, FieldSpecifiedError, Unit] = {
       for {
-        opt <- EitherT.right(payProvider.find[ScheduledPayFull](payId, isExpense = false))
+        opt <- EitherT.right(payProvider.use(_.find[ScheduledPayFull](payId, isExpense = false)))
         r <- commonService.actionFromOption(opt)(
-          EitherT.fromEither[F](Left[FieldSpecifiedError, Int](ValidationError("error", "Scheduled pay not found")))
+          EitherT.fromEither[F](Left[FieldSpecifiedError, Unit](ValidationError("error", "Scheduled pay not found")))
         )(pay => {
           if (userId != pay.userId) {
-            EitherT.fromEither[F](Left[FieldSpecifiedError, Int](ValidationError("error", "Scheduled pay not found")))
+            EitherT.fromEither[F](Left[FieldSpecifiedError, Unit](ValidationError("error", "Scheduled pay not found")))
           } else {
             val update = for {
-              _ <- scheduledPayProvider.updatePayStatus(pay, newStatus)
+              _ <- scheduledPayProvider.use(_.updatePayStatus(pay, newStatus))
               _ <- newStatus match {
-                case FULFILLED => payProvider.insert(ExpenseRaw(pay.sum, pay.expenseType, pay.userId, pay.date))
-                case _         => MonadCancelThrow[F].pure(())
+                case FULFILLED =>
+                  for {
+                    _ <- payProvider.use(_.insert(ExpenseRaw(pay.sum, pay.expenseType, pay.userId, pay.date)))
+                    _ <- setUpdateLastTimeUpdatedOption_(userId)
+                  } yield ()
+                case _ => MonadCancelThrow[F].pure(())
               }
             } yield ()
             EitherT.apply(
-              MonadCancelThrow[F].redeem(update)(
+              MonadCancelThrow[F].redeemWith(update)(
                 err => {
-                  logger.error(err)(s"Unexpected SQLException. Cannot update pay status")
-                  Left[FieldSpecifiedError, Int](
+                  for {
+                    _ <- logger.error(err)(s"Unexpected SQLException. Cannot update pay status")
+                  } yield Left[FieldSpecifiedError, Unit](
                     DBException("error", "SQLException: cannot change scheduled pay status")
                   )
                 },
-                _ => Right(1)
+                v => MonadCancelThrow[F].pure(Right(v))
               )
             )
           }
         })
       } yield r
     }
-  }
-
-  def getPastTermScheduledPays(userId: Long): List[ScheduledPayFull] = {
-    ExpenseDao
-      .findForPeriod[ScheduledPayFull](
-        userId,
-        LocalDate.of(1999, 1, 1),
-        1.daysBefore(findNow().toLocalDate),
-        isExpense = false
-      )
-      .map(pays => pays filter (_.status == ScheduledPayStatus.SCHEDULED))
-      .toEitherDBException("no exception here")
-      .getOrElse(Nil)
-  }
-
-  def getPreviousPays(userId: Long): Either[DBException, List[ScheduledPayFull]] = {
-    val start = LocalDate.of(1999, 1, 1)
-    ExpenseDao
-      .findForPeriod[ScheduledPayFull](userId, start, 1.daysBefore(findNow().toLocalDate), isExpense = false)
-      .toEitherDBException()
   }
 
   def getSumsByDay: List[ExpenseFull] => List[(LocalDate, Double)] =

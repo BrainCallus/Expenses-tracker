@@ -33,7 +33,7 @@ div .diagrams {
 
 #chart1 {
     width: 70%;
-    background-color: aliceblue;
+    background-color: #f8fbff;
     padding: 1em 1.9em 1em 1em;
     margin: 1em;
     display: inline-flex;
@@ -88,7 +88,7 @@ div .diagrams {
 }
 
 .form-buttons {
-    margin: 0 0 2em 1.0em;
+    margin: 0 0 2em 1.1em;
 }
 
 .expenses-table {

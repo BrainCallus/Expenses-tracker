@@ -11,9 +11,9 @@ import play.api.test.Helpers._
 import play.api.test.CSRFTokenHelper._
 
 class LoginControllerSpec extends PlaySpec with BeforeAndAfterAll with GuiceOneAppPerTest with Injecting {
-
   private val login = "testUser"
 
+  // todo: tests for redirect /login, /register if user already logged in
   "LoginController initTest" should {
     "create new user that previously didn't exist" in {
       base.BaseTests.createNewUser(login)
@@ -21,7 +21,6 @@ class LoginControllerSpec extends PlaySpec with BeforeAndAfterAll with GuiceOneA
   }
 
   "LoginController GET" should {
-
     "render the login page from a new instance of controller" in {
       val controller = new LoginController(stubControllerComponents())
       val loginPage = controller.renderLoginForm().apply(FakeRequest(GET, "/login").withCSRFToken)
